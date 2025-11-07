@@ -1,0 +1,20 @@
+curl 'https://x.com/i/api/fleets/v1/fleetline?only_spaces=true' \
+  -H 'accept: */*' \
+  -H 'accept-language: en-US,en;q=0.9' \
+  -H 'authorization: Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA' \
+  -H 'cookie: lang=en; _ga=GA1.2.769443303.1715964237; _gid=GA1.2.468477616.1715964237; dnt=1; lang=en; guest_id=v1%3A170837573383176325; night_mode=2; guest_id_marketing=v1%3A170837573383176325; guest_id_ads=v1%3A170837573383176325; gt=1791510703532097561; kdt=u0FRPaaHV2J1aBrVWePQvlAU28iwI6MZl0YVQcGP; auth_token=2ad8d3e033a776e7c483db62d19b39b9a00f1d18; ct0=8d2dd7762f22812d3ff3246d9ea3ee1058440ef728a8417cfe54290c15356acc678d001bdd85369462689806e495404dba817a7471198b2bc29063da5a741f2515dd09bb10342e4754a71d203c36e380; att=1-ktzJqmjnGcg8JTYBAm1obCBOn3UvfrVd2VFe13rE; twid=u%3D1721213180741869568; personalization_id="v1_jwd4kHk3UsBNG6UnbY9yIg=="' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://x.com/home' \
+  -H 'sec-ch-ua: "Chromium";v="124", "Microsoft Edge";v="124", "Not-A.Brand";v="99"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0' \
+  -H 'x-client-transaction-id: dtcKMr0hdZnoeavoXx3v01bVuzpYsiTb8l1zn0qx94GwOKsyZwlLq/Ks9m/lzfHqvKVQjnf/9Q9j6NAPp8HsUpSnO+bNdQ' \
+  -H 'x-client-uuid: 349ee6cc-2baa-40d4-979c-f930273825b9' \
+  -H 'x-csrf-token: 8d2dd7762f22812d3ff3246d9ea3ee1058440ef728a8417cfe54290c15356acc678d001bdd85369462689806e495404dba817a7471198b2bc29063da5a741f2515dd09bb10342e4754a71d203c36e380' \
+  -H 'x-twitter-active-user: yes' \
+  -H 'x-twitter-auth-type: OAuth2Session' \
+  -H 'x-twitter-client-language: en'

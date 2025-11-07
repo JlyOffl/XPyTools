@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+gunicorn
+mysql-connector-python
+colorama
+requests
+python-multipart
