@@ -2,8 +2,10 @@ import threading
 import logging
 import random
 import time
+from typing import Optional
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from rest_utils import *
+from rest_utils import *  # keep using your existing sync functions/utilities
 
 # === Config ===
 DEBUG_MODE = False  # Set to False in production
@@ -26,10 +28,77 @@ app = FastAPI()
 def _clean_username(username: str) -> str:
     return (username or "").strip().lstrip("@")
 
+# ---------------------------
+# DRY helpers (reuse across both flows)
+# ---------------------------
+
+def _fetch_user_space_core(uname: str):
+    """
+    Resolve user -> rest_id -> active space (space_id, title), update DB display name.
+    Returns (rest_id, display_name, space_id, title) or None if anything missing.
+    Side-effects: DeleteFollower on missing users, UpdateFollowerDisplayName when known.
+    """
+    res = get_user_info_by_screen_name(uname)
+    if res is None or not getattr(res, "text", ""):
+        DBProxy().DeleteFollower(uname)
+        return None
+
+    if not extract_value_from_json_path(res.text, "data"):
+        DBProxy().DeleteFollower(uname)
+        return None
+
+    rest_id = extract_value_from_json_path(res.text, "rest_id")
+    display_name = extract_value_from_json_path(res.text, "name") or uname
+    if not rest_id:
+        return None
+
+    res = get_space_by_host_id(rest_id)
+    DBProxy().UpdateFollowerDisplayName(uname, display_name)
+
+    users_blob = extract_value_from_json_path(res.text, "users")
+    if users_blob in (None, "{}", "[]"):
+        return None
+
+    space_id = extract_value_from_json_path(res.text, "broadcast_id")
+    if not space_id:
+        return None
+
+    title = extract_value_from_json_path(res.text, "title") or f"{display_name} Space"
+    return rest_id, display_name, space_id, title
+
+
+def _fetch_audio_core(space_id: str):
+    """
+    Resolve media_key -> audio_url -> short_url for a given space_id.
+    Returns (audio_url, short_url) or None if anything missing.
+    """
+    res = get_space_audio_by_id(space_id)
+    if res is None or not getattr(res, "text", ""):
+        return None
+
+    media_key = extract_value_from_json_path(res.text, "media_key")
+    if not media_key:
+        return None
+
+    res = get_space_audio_link(media_key)
+    if res is None or not getattr(res, "text", ""):
+        return None
+
+    audio_url = extract_value_from_json_path(res.text, "noRedirectPlaybackUrl")
+    if not audio_url:
+        return None
+
+    short_url = shorten_url(audio_url)
+    return audio_url, short_url
+
+# ---------------------------
+# Main functions (reused in bulk + single)
+# ---------------------------
+
 def get_audio_space_link(username: str):
     """
     (Legacy bulk-thread function) Attempts to find and post a space link for the user.
-    Guards for missing IDs to avoid /status/None requests.
+    Now reuses core helpers and sends Telegram in a background thread to avoid blocking.
     """
     try:
         uname = _clean_username(username)
@@ -39,72 +108,35 @@ def get_audio_space_link(username: str):
         if DEBUG_MODE:
             logger.info(f"Started processing for user: {uname}")
 
-        res = get_user_info_by_screen_name(uname)
-        #logger.info(f"Response for user: {res}")
-        if DEBUG_MODE and res:
-            logger.info(f"Response for user: {res.text if hasattr(res, 'text') else '<no text>'}")
-
-        if res is None:
-            logger.warning(f"No response received for user: {uname}")
+        core = _fetch_user_space_core(uname)
+        if not core:
             return
+        rest_id, user_name, space_id, title = core
 
-        check = extract_value_from_json_path(res.text, "data")
-        if not check:
-            logger.warning(f"{uname} - User does not exist")
-            DBProxy().DeleteFollower(uname)
+        audio_core = _fetch_audio_core(space_id)
+        if not audio_core:
             return
-
-        rest_id = extract_value_from_json_path(res.text, "rest_id")
-        user_name = extract_value_from_json_path(res.text, "name") or uname
-        if not rest_id:
-            return
-
-        res = get_space_by_host_id(rest_id)
-        DBProxy().UpdateFollowerDisplayName(uname, user_name)
-
-        spacevalue = extract_value_from_json_path(res.text, "users")
-        if spacevalue in (None, "{}", "[]"):
-            return
-
-        spaceId = extract_value_from_json_path(res.text, "broadcast_id")
-        if not spaceId:
-            return
-
-        title = extract_value_from_json_path(res.text, "title") or f"{user_name} Space"
-
-        res = get_space_audio_by_id(spaceId)
-        if res is None or not getattr(res, "text", ""):
-            return
-
-        media_key = extract_value_from_json_path(res.text, "media_key")
-        if not media_key:
-            return
-
-        res = get_space_audio_link(media_key)
-        if res is None or not getattr(res, "text", ""):
-            return
-
-        audio_url = extract_value_from_json_path(res.text, "noRedirectPlaybackUrl")
-        if not audio_url:
-            return
-
-        shortUrl = shorten_url(audio_url)
+        audio_url, short_url = audio_core
 
         tweet = (
             f"Topic: {title}\n"
             f"ID: https://x.com/{uname} ({user_name})\n"
-            f"AudioLink: {shortUrl}\n"
-            f"Space: https://x.com/i/spaces/{spaceId}"
+            f"AudioLink: {short_url}\n"
+            f"Space: https://x.com/i/spaces/{space_id}"
         )
 
+        # non-blocking notification
         try:
-            send_telegram_message(tweet)
+            threading.Thread(
+                target=lambda: send_telegram_message(tweet),
+                daemon=True
+            ).start()
         except Exception as et:
-            logger.warning(f"Telegram send failed for {uname}: {et}")
+            logger.warning(f"Telegram schedule failed for {uname}: {et}")
 
-        # Update display name of host
+        # Best-effort: refresh host display name (non-critical)
         try:
-            res = get_host_info_by_spaceId(spaceId)
+            res = get_host_info_by_spaceId(space_id)
             host_screen_name = extract_value_from_json_path(res.text, "screen_name")
             if host_screen_name:
                 res = get_user_info_by_screen_name(host_screen_name)
@@ -113,65 +145,32 @@ def get_audio_space_link(username: str):
                     DBProxy().UpdateFollowerDisplayName(host_screen_name, host_name)
         except Exception as e:
             if DEBUG_MODE:
-                logger.info(f"Host display name update failed for {spaceId}: {e}")
+                logger.info(f"Host display name update failed for {space_id}: {e}")
 
     except Exception as e:
         logger.error(f"Error in get_audio_space_link for user {username}: {e}", exc_info=True)
 
-def get_space_info_and_notify(username: str, notify_telegram: bool = True):
+
+def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Optional[dict]:
     """
     Looks up the user's current Space, builds audio link + short URL,
-    optionally sends a Telegram message, and returns a dict with details.
-    Returns None if no Space or audio link found.
+    optionally sends a Telegram message (non-blocking), and returns a dict.
+    Returns None if no Space/audio found.
     """
     try:
         uname = _clean_username(username)
         if not uname:
             return None
 
-        res = get_user_info_by_screen_name(uname)
-        if res is None or not getattr(res, "text", ""):
-            DBProxy().DeleteFollower(uname)
+        core = _fetch_user_space_core(uname)
+        if not core:
             return None
+        _, user_name, space_id, title = core
 
-        if not extract_value_from_json_path(res.text, "data"):
-            DBProxy().DeleteFollower(uname)
+        audio_core = _fetch_audio_core(space_id)
+        if not audio_core:
             return None
-
-        rest_id  = extract_value_from_json_path(res.text, "rest_id")
-        user_name = extract_value_from_json_path(res.text, "name") or uname
-        if not rest_id:
-            return None
-
-        res = get_space_by_host_id(rest_id)
-        DBProxy().UpdateFollowerDisplayName(uname, user_name)
-
-        spacevalue = extract_value_from_json_path(res.text, "users")
-        if spacevalue in (None, "{}", "[]"):
-            return None
-
-        space_id = extract_value_from_json_path(res.text, "broadcast_id")
-        title    = extract_value_from_json_path(res.text, "title") or f"{user_name} Space"
-        if not space_id:
-            return None
-
-        res = get_space_audio_by_id(space_id)
-        if res is None or not getattr(res, "text", ""):
-            return None
-
-        media_key = extract_value_from_json_path(res.text, "media_key")
-        if not media_key:
-            return None
-
-        res = get_space_audio_link(media_key)
-        if res is None or not getattr(res, "text", ""):
-            return None
-
-        audio_url = extract_value_from_json_path(res.text, "noRedirectPlaybackUrl")
-        if not audio_url:
-            return None
-
-        short_url = shorten_url(audio_url)
+        audio_url, short_url = audio_core
 
         tweet = (
             f"Topic: {title}\n"
@@ -183,10 +182,14 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True):
         notified = False
         if notify_telegram:
             try:
-                send_telegram_message(tweet)
-                notified = True
+                # fire-and-forget; don't block the request thread
+                threading.Thread(
+                    target=lambda: send_telegram_message(tweet),
+                    daemon=True
+                ).start()
+                notified = True  # scheduled
             except Exception as et:
-                logger.warning(f"Telegram send failed for {uname}: {et}")
+                logger.warning(f"Telegram schedule failed for {uname}: {et}")
 
         return {
             "username": uname,
@@ -203,6 +206,10 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True):
         logger.error(f"get_space_info_and_notify error for {username}: {e}", exc_info=True)
         return None
 
+# ---------------------------
+# Bulk worker
+# ---------------------------
+
 def _bulk_spaces_worker(usernames, max_workers: int = 6, delay_range=(1.0, 2.0)):
     """
     Background worker: submits get_audio_space_link for each username,
@@ -214,7 +221,7 @@ def _bulk_spaces_worker(usernames, max_workers: int = 6, delay_range=(1.0, 2.0))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             for uname in usernames:
                 try:
-                    executor.submit(get_audio_space_link, uname)
+                    executor.submit(get_audio_space_link, uname)  # reuse same path
                 except Exception as e:
                     logger.warning(f"Failed to submit task for {uname}: {e}")
                 # keep the wait to avoid hammering upstream APIs
@@ -230,7 +237,7 @@ def _bulk_spaces_worker(usernames, max_workers: int = 6, delay_range=(1.0, 2.0))
 def get_space_for_user(username: str):
     """
     GET /spaces/{username}
-    Returns short_url (and other details) in JSON AND always sends Telegram.
+    Returns short_url (and other details) in JSON AND always schedules Telegram send.
     """
     if not username or not username.strip():
         raise HTTPException(status_code=400, detail="Username is required.")
