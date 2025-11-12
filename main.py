@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 # === FastAPI App ===
 app = FastAPI()
 
+# === Run-state guard to prevent overlapping /spaces runs ===
+_RUNNING_BULK = threading.Event()
+
 # ---------------------------
 # Helpers
 # ---------------------------
@@ -207,27 +210,52 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Op
         return None
 
 # ---------------------------
-# Bulk worker
+# Adaptive, overlap-safe bulk worker
 # ---------------------------
 
-def _bulk_spaces_worker(usernames, max_workers: int = 6, delay_range=(1.0, 2.0)):
+def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
     """
-    Background worker: submits get_audio_space_link for each username,
-    with limited concurrency and throttled submission to avoid API floods.
+    Submits get_audio_space_link for each username with adaptive concurrency
+    and gentle throttling. Safe for 300+ users.
+    Also guards against overlapping runs via _RUNNING_BULK.
     """
     from concurrent.futures import ThreadPoolExecutor
+    import math
 
+    if _RUNNING_BULK.is_set():
+        logger.info("Bulk worker invoked while already running; skipping.")
+        return
+
+    _RUNNING_BULK.set()
     try:
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        n = len(usernames) if usernames else 0
+        if n == 0:
+            return
+
+        # --- Adaptive knobs ---
+        effective_workers = min(max(10, math.ceil(n / 3)), int(max_workers), n)
+        if delay_range is None:
+            if n >= 200:
+                delay_range = (0.10, 0.30)
+            elif n >= 50:
+                delay_range = (0.30, 0.80)
+            else:
+                delay_range = (0.50, 1.50)
+
+        with ThreadPoolExecutor(max_workers=effective_workers) as executor:
             for uname in usernames:
                 try:
-                    executor.submit(get_audio_space_link, uname)  # reuse same path
+                    executor.submit(get_audio_space_link, uname)
                 except Exception as e:
                     logger.warning(f"Failed to submit task for {uname}: {e}")
-                # keep the wait to avoid hammering upstream APIs
                 time.sleep(random.uniform(*delay_range))
+
+        logger.info(f"Bulk worker completed: {n} users, workers={effective_workers}, delay={delay_range}")
+
     except Exception as e:
         logger.error(f"Bulk worker failed: {e}", exc_info=True)
+    finally:
+        _RUNNING_BULK.clear()
 
 # ---------------------------
 # HTTP Endpoints
@@ -258,20 +286,33 @@ def get_space_for_user(username: str):
 @app.get("/spaces")
 def fetch_space(background_tasks: BackgroundTasks):
     """
-    Bulk trigger over following list.
-    - Schedules a background worker that throttles submissions (keeps waits).
-    - Returns immediately with the number of users queued.
+    Bulk trigger over following list (runs every 5 mins).
+    - Prevents overlapping runs.
+    - Schedules adaptive background worker (up to 100 workers).
+    - Adds small jitter (0–5s) to avoid stampede starts.
     """
     try:
+        if _RUNNING_BULK.is_set():
+            return {"status": "Already running", "in_progress": True}
+
         uList = DBProxy().GetFollowingList()
         random.shuffle(uList)
         count = len(uList)
 
-        # Kick off background worker (keeps internal waits and bounded concurrency)
-        background_tasks.add_task(_bulk_spaces_worker, uList)
+        # Small jitter (0–5s)
+        start_delay = random.uniform(0.0, 5.0)
 
-        logger.info(f"XSpacesExplore queued for {count} users")
-        return {"status": "X Spaces Explore Triggered", "count": count}
+        def delayed_start():
+            try:
+                time.sleep(start_delay)
+                _bulk_spaces_worker(uList, max_workers=100)
+            except Exception as e:
+                logger.error(f"Delayed start failed: {e}", exc_info=True)
+
+        background_tasks.add_task(delayed_start)
+
+        logger.info(f"XSpacesExplore queued for {count} users (jitter={start_delay:.2f}s)")
+        return {"status": "Triggered", "count": count, "jitter_seconds": round(start_delay, 2)}
 
     except Exception as e:
         logger.error(f"Error scheduling /spaces bulk worker: {e}", exc_info=True)
