@@ -7,10 +7,11 @@ gunicorn==23.0.0
 httpx[http2]==0.27.2
 anyio==4.4.0
 
-# Database (peewee + pymysql for Aiven SSL)
-peewee==3.17.5
-pymysql==1.1.1
-cryptography==43.0.1
+# Database
+mysql-connector-python==9.0.0
+pymysql==1.1.1          # required for Aiven SSL
+peewee==3.17.5          # required for MySQLDatabase
+cryptography==43.0.1    # recommended for SSL parsing
 
 # Misc utilities
 colorama==0.4.6
