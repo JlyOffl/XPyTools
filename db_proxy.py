@@ -16,7 +16,7 @@ class DBProxy:
         self.db = MySQLDatabase(
             host="fireflyapp-db-firefly-3ba2.j.aivencloud.com",
             user="avnadmin",
-            password="AVNS_Ny5_tVz668cRzFC1YNV?F",
+            password="AVNS_Ny5_tVz668cRzFC1YNV",
             database="defaultdb",
             port=18245,
             ssl_ca=ssl_path,
