@@ -17,7 +17,7 @@ CREATE TABLE `Following` (
   `MainUser` int(11) DEFAULT '0',
   PRIMARY KEY (`ID`),
   UNIQUE KEY `idx_username` (`UserName`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `Following` (`ID`, `UserName`, `DisplayName`, `bAutoRecord`, `SpeakerCount`, `HostCount`, `LastActivity`, `MainUser`) VALUES
 (1, 'JDave1981', 'Jay', NULL, 0, 0, NULL, 1),
@@ -35,7 +35,7 @@ CREATE TABLE `Settings` (
   `Name` varchar(100) NOT NULL,
   `Value` text NOT NULL,
   PRIMARY KEY (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `Settings` (`ID`, `Name`, `Value`) VALUES
 (1, 'DataRefresh', '150001'),
@@ -60,7 +60,7 @@ CREATE TABLE `TSEServices` (
   `ID` int(11) NOT NULL AUTO_INCREMENT,
   `ServiceName` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `TSEServices` (`ID`, `ServiceName`) VALUES
 (1, 'TSE.Discovery'),
@@ -91,6 +91,6 @@ CREATE TABLE `TwitterSpacesMain` (
   `LastActivity` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `unique_space_key` (`SpaceUrl`,`HostName`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 COMMIT;
