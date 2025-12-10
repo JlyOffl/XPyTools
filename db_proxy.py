@@ -14,15 +14,12 @@ class DBProxy:
 
         # Aiven MySQL connection (correct host, port, SSL)
         self.db = MySQLDatabase(
-            "defaultdb",
             host="fireflyapp-db-firefly-3ba2.j.aivencloud.com",
-            port=18245,
             user="avnadmin",
-            password="AVNS_Ny5_tVz668cRzFC1YNV",
-            **{
-                "client_flag": pymysql.constants.CLIENT.SSL,
-                "ssl": {"ca": ssl_path}
-            }
+            password="AVNS_Ny5_tVz668cRzFC1YNV?F",
+            database="defaultdb",
+            port=18245,
+            ssl_ca=ssl_path,
         )
     
     def isUserRecord(self, user):
