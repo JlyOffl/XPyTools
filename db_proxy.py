@@ -1,9 +1,29 @@
 from db_utils import *
+import os
+import pymysql
+from peewee import MySQLDatabase
+
 
 class DBProxy:
     def __init__(self):
         #self.db = MySQLDatabase(host="71.56.95.208", user="rajkumar", password="rose", database="TwitterExplorer")
-        self.db = MySQLDatabase(host="fireflyapp-db-firefly-3ba2.j.aivencloud.com:18245", user="avnadmin", password="AVNS_Ny5_tVz668cRzFC1YNV?F", database="defaultdb")
+
+        # Prepare SSL certificate path
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        ssl_path = os.path.join(base_dir, "ssl", "aiven-ca.pem")
+
+        # Aiven MySQL connection (correct host, port, SSL)
+        self.db = MySQLDatabase(
+            "defaultdb",
+            host="fireflyapp-db-firefly-3ba2.j.aivencloud.com",
+            port=18245,
+            user="avnadmin",
+            password="AVNS_Ny5_tVz668cRzFC1YNV?F",
+            **{
+                "client_flag": pymysql.constants.CLIENT.SSL,
+                "ssl": {"ca": ssl_path}
+            }
+        )
     
     def isUserRecord(self, user):
         ret = False
@@ -11,7 +31,7 @@ class DBProxy:
         select_query = "SELECT * FROM Following WHERE UserName = '" + user + "'"
         results = self.db.fetch_results(select_query)
         #print(results)
-        if(results[0][3] == 1):
+        if(results and results[0][3] == 1):
             ret = True
         self.db.close()
         return ret
@@ -93,4 +113,3 @@ class DBProxy:
         self.db.execute_query(update_query)
         self.db.close()
         #print("Space: ", spaceId, " Closed")
-        
