@@ -18,7 +18,7 @@ class DBProxy:
             host="fireflyapp-db-firefly-3ba2.j.aivencloud.com",
             port=18245,
             user="avnadmin",
-            password="AVNS_Ny5_tVz668cRzFC1YNV?F",
+            password="AVNS_Ny5_tVz668cRzFC1YNV",
             **{
                 "client_flag": pymysql.constants.CLIENT.SSL,
                 "ssl": {"ca": ssl_path}
