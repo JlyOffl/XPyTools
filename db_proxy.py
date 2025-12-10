@@ -83,14 +83,29 @@ class DBProxy:
         return ret
         
     def UpdateFollowerDisplayName(self, username, displayname):
-        if(displayname == None):
+        if displayname is None:
             return
-        query = "INSERT INTO Following (username, DisplayName) VALUES (%s, %s) ON DUPLICATE KEY UPDATE DisplayName = VALUES(DisplayName)"
+    
         self.db.connect()
-        params = (username, displayname)
-        self.db.execute_query(query, params)
+    
+        # 1) Try to update existing row
+        update_sql = """
+            UPDATE Following
+            SET DisplayName = %s
+            WHERE UserName = %s
+        """
+        affected = self.db.execute_query(update_sql, (displayname, username))
+    
+        # 2) If no row updated, insert a new one
+        if affected == 0:
+            insert_sql = """
+                INSERT INTO Following (UserName, DisplayName)
+                VALUES (%s, %s)
+            """
+            self.db.execute_query(insert_sql, (username, displayname))
+    
         self.db.close()
-        
+
     def DeleteFollower(self, username):
         self.db.connect()
         delete_query = (
