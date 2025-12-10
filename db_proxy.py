@@ -3,7 +3,7 @@ from db_utils import *
 class DBProxy:
     def __init__(self):
         #self.db = MySQLDatabase(host="71.56.95.208", user="rajkumar", password="rose", database="TwitterExplorer")
-        self.db = MySQLDatabase(host="sql5.freesqldatabase.com", user="sql5810468", password="IdbJMhkW1l", database="sql5810468")
+        self.db = MySQLDatabase(host="sql.freedb.tech", user="freedb_Test4049829422", password="992u3KGyyvSzz?F", database="freedb_Test4049829422")
     
     def isUserRecord(self, user):
         ret = False
