@@ -83,28 +83,41 @@ class DBProxy:
         return ret
         
     def UpdateFollowerDisplayName(self, username, displayname):
-        if displayname is None:
+        # Basic guard: no username = nothing to do
+        if not username:
             return
     
         self.db.connect()
     
-        # 1) Try to update existing row
-        update_sql = """
-            UPDATE Following
-            SET DisplayName = %s
-            WHERE UserName = %s
-        """
-        affected = self.db.execute_query(update_sql, (displayname, username))
+        try:
+            # 1) Check if this username already exists
+            select_sql = "SELECT DisplayName FROM Following WHERE UserName = %s"
+            rows = self.db.fetch_results(select_sql, (username,))
     
-        # 2) If no row updated, insert a new one
-        if affected == 0:
-            insert_sql = """
-                INSERT INTO Following (UserName, DisplayName)
-                VALUES (%s, %s)
-            """
-            self.db.execute_query(insert_sql, (username, displayname))
+            if rows:
+                # Row exists
+                current_displayname = rows[0][0]  # DisplayName column
     
-        self.db.close()
+                # Only update if existing DisplayName is NULL/empty
+                # and we have a non-empty new displayname
+                if (current_displayname is None or current_displayname == "") and displayname:
+                    update_sql = """
+                        UPDATE Following
+                        SET DisplayName = %s
+                        WHERE UserName = %s
+                    """
+                    self.db.execute_query(update_sql, (displayname, username))
+                    # No insert → no new ID consumed
+            else:
+                # No row for this username → insert new
+                insert_sql = """
+                    INSERT INTO Following (UserName, DisplayName)
+                    VALUES (%s, %s)
+                """
+                self.db.execute_query(insert_sql, (username, displayname))
+    
+        finally:
+            self.db.close()
 
     def DeleteFollower(self, username):
         self.db.connect()
