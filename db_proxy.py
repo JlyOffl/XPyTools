@@ -1,8 +1,5 @@
 from db_utils import *
 import os
-import pymysql
-from peewee import MySQLDatabase
-
 
 class DBProxy:
     def __init__(self):
