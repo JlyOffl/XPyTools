@@ -83,36 +83,31 @@ class DBProxy:
         return ret
         
     def UpdateFollowerDisplayName(self, username, displayname):
-        # Basic guard: no username = nothing to do
         if not username:
             return
     
         self.db.connect()
     
         try:
-            # 1) Check if this username already exists
-            select_sql = "SELECT DisplayName FROM Following WHERE UserName = %s"
+            # 1. Check if user exists
+            select_sql = "SELECT ID, DisplayName FROM Following WHERE UserName = %s"
             rows = self.db.fetch_results(select_sql, (username,))
     
             if rows:
-                # Row exists
-                current_displayname = rows[0][0]  # DisplayName column
+                # user exists
+                _, current_displayname = rows[0]
     
-                # Only update if existing DisplayName is NULL/empty
-                # and we have a non-empty new displayname
+                # update only if displayname is empty
                 if (current_displayname is None or current_displayname == "") and displayname:
-                    update_sql = """
-                        UPDATE Following
-                        SET DisplayName = %s
-                        WHERE UserName = %s
-                    """
+                    update_sql = "UPDATE Following SET DisplayName = %s WHERE UserName = %s"
                     self.db.execute_query(update_sql, (displayname, username))
-                    # No insert → no new ID consumed
+    
             else:
-                # No row for this username → insert new
+                # user does not exist → insert manually with MAX + 1
                 insert_sql = """
-                    INSERT INTO Following (UserName, DisplayName)
-                    VALUES (%s, %s)
+                    INSERT INTO Following (ID, UserName, DisplayName)
+                    SELECT IFNULL(MAX(ID), 0) + 1, %s, %s
+                    FROM Following;
                 """
                 self.db.execute_query(insert_sql, (username, displayname))
     
