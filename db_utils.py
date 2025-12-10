@@ -59,17 +59,21 @@ class MySQLDatabase:
         """Executes a given query with optional parameters."""
         if self.connection is None or not self.connection.is_connected():
             print("Not connected to the database.")
-            return
-
+            return 0  # nothing affected
+    
         cursor = self.connection.cursor()
         try:
             cursor.execute(query, params)
             self.connection.commit()
-            # print("Query executed successfully")
+            affected_rows = cursor.rowcount
+            return affected_rows
         except Error as e:
             print(f"Error executing query: {e}")
+            self.connection.rollback()
+            return 0
         finally:
             cursor.close()
+
 
     def generate_insert_statement(self, table, data):
         """
