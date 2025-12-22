@@ -5,12 +5,34 @@ import time
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+
 from rest_utils import *  # keep using your existing sync functions/utilities
 
+# ============================
+# ADDED: import the bot service
+# ============================
+from tg_link_bot import TelegramLinkBotService
+
+
+# ============================================================
 # === Config ===
+# ============================================================
 DEBUG_MODE = False  # Set to False in production
 
+# ============================
+# ADDED: Telegram bot config
+# ============================
+BOT_TOKEN = "8572400565:AAGZfqW9BzdTbpH1_1tVQBRGOcBG1RkZ_iY"
+API_ID = 23222227
+API_HASH = "285928aad99d749c835f42b631bdc5be"
+
+# MUST be a USER Telethon session (phone login)
+TELETHON_SESSION = "tg_user_session_user"
+
+
+# ============================================================
 # === Logging Setup ===
+# ============================================================
 log_level = logging.DEBUG if DEBUG_MODE else logging.ERROR
 logging.basicConfig(
     level=log_level,
@@ -18,29 +40,53 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+# ============================================================
 # === FastAPI App ===
+# ============================================================
 app = FastAPI()
+
+# ============================
+# ADDED: initialize bot service
+# ============================
+tg_bot_service = TelegramLinkBotService(
+    bot_token=BOT_TOKEN,
+    api_id=API_ID,
+    api_hash=API_HASH,
+    telethon_session=TELETHON_SESSION,
+    debug=DEBUG_MODE
+)
 
 # === Run-state guard to prevent overlapping /spaces runs ===
 _RUNNING_BULK = threading.Event()
 
-# ---------------------------
-# Helpers
-# ---------------------------
 
+# ============================================================
+# === FastAPI lifecycle hooks (ADDED)
+# ============================================================
+@app.on_event("startup")
+async def startup_event():
+    # Start Telegram link bot in background
+    await tg_bot_service.start()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    # Stop Telegram link bot cleanly
+    await tg_bot_service.stop()
+
+
+# ============================================================
+# === Helpers
+# ============================================================
 def _clean_username(username: str) -> str:
     return (username or "").strip().lstrip("@")
 
-# ---------------------------
-# DRY helpers (reuse across both flows)
-# ---------------------------
 
+# ============================================================
+# === DRY helpers (reuse across both flows)
+# ============================================================
 def _fetch_user_space_core(uname: str):
-    """
-    Resolve user -> rest_id -> active space (space_id, title), update DB display name.
-    Returns (rest_id, display_name, space_id, title) or None if anything missing.
-    Side-effects: DeleteFollower on missing users, UpdateFollowerDisplayName when known.
-    """
     res = get_user_info_by_screen_name(uname)
     if res is None or not getattr(res, "text", ""):
         DBProxy().DeleteFollower(uname)
@@ -71,10 +117,6 @@ def _fetch_user_space_core(uname: str):
 
 
 def _fetch_audio_core(space_id: str):
-    """
-    Resolve media_key -> audio_url -> short_url for a given space_id.
-    Returns (audio_url, short_url) or None if anything missing.
-    """
     res = get_space_audio_by_id(space_id)
     if res is None or not getattr(res, "text", ""):
         return None
@@ -94,22 +136,15 @@ def _fetch_audio_core(space_id: str):
     short_url = shorten_url(audio_url)
     return audio_url, short_url
 
-# ---------------------------
-# Main functions (reused in bulk + single)
-# ---------------------------
 
+# ============================================================
+# === Main functions (reused in bulk + single)
+# ============================================================
 def get_audio_space_link(username: str):
-    """
-    (Legacy bulk-thread function) Attempts to find and post a space link for the user.
-    Now reuses core helpers and sends Telegram in a background thread to avoid blocking.
-    """
     try:
         uname = _clean_username(username)
         if not uname:
             return
-
-        if DEBUG_MODE:
-            logger.info(f"Started processing for user: {uname}")
 
         core = _fetch_user_space_core(uname)
         if not core:
@@ -128,7 +163,6 @@ def get_audio_space_link(username: str):
             f"Space: https://x.com/i/spaces/{space_id}"
         )
 
-        # non-blocking notification
         try:
             threading.Thread(
                 target=lambda: send_telegram_message(tweet),
@@ -137,29 +171,11 @@ def get_audio_space_link(username: str):
         except Exception as et:
             logger.warning(f"Telegram schedule failed for {uname}: {et}")
 
-        # Best-effort: refresh host display name (non-critical)
-        try:
-            res = get_host_info_by_spaceId(space_id)
-            host_screen_name = extract_value_from_json_path(res.text, "screen_name")
-            if host_screen_name:
-                res = get_user_info_by_screen_name(host_screen_name)
-                host_name = extract_value_from_json_path(res.text, "name")
-                if host_name:
-                    DBProxy().UpdateFollowerDisplayName(host_screen_name, host_name)
-        except Exception as e:
-            if DEBUG_MODE:
-                logger.info(f"Host display name update failed for {space_id}: {e}")
-
     except Exception as e:
         logger.error(f"Error in get_audio_space_link for user {username}: {e}", exc_info=True)
 
 
 def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Optional[dict]:
-    """
-    Looks up the user's current Space, builds audio link + short URL,
-    optionally sends a Telegram message (non-blocking), and returns a dict.
-    Returns None if no Space/audio found.
-    """
     try:
         uname = _clean_username(username)
         if not uname:
@@ -185,12 +201,11 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Op
         notified = False
         if notify_telegram:
             try:
-                # fire-and-forget; don't block the request thread
                 threading.Thread(
                     target=lambda: send_telegram_message(tweet),
                     daemon=True
                 ).start()
-                notified = True  # scheduled
+                notified = True
             except Exception as et:
                 logger.warning(f"Telegram schedule failed for {uname}: {et}")
 
@@ -209,16 +224,11 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Op
         logger.error(f"get_space_info_and_notify error for {username}: {e}", exc_info=True)
         return None
 
-# ---------------------------
-# Adaptive, overlap-safe bulk worker
-# ---------------------------
 
+# ============================================================
+# === Adaptive, overlap-safe bulk worker
+# ============================================================
 def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
-    """
-    Submits get_audio_space_link for each username with adaptive concurrency
-    and gentle throttling. Safe for 300+ users.
-    Also guards against overlapping runs via _RUNNING_BULK.
-    """
     from concurrent.futures import ThreadPoolExecutor
     import math
 
@@ -232,7 +242,6 @@ def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
         if n == 0:
             return
 
-        # --- Adaptive knobs ---
         effective_workers = min(max(10, math.ceil(n / 3)), int(max_workers), n)
         if delay_range is None:
             if n >= 200:
@@ -244,29 +253,18 @@ def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
 
         with ThreadPoolExecutor(max_workers=effective_workers) as executor:
             for uname in usernames:
-                try:
-                    executor.submit(get_audio_space_link, uname)
-                except Exception as e:
-                    logger.warning(f"Failed to submit task for {uname}: {e}")
+                executor.submit(get_audio_space_link, uname)
                 time.sleep(random.uniform(*delay_range))
 
-        logger.info(f"Bulk worker completed: {n} users, workers={effective_workers}, delay={delay_range}")
-
-    except Exception as e:
-        logger.error(f"Bulk worker failed: {e}", exc_info=True)
     finally:
         _RUNNING_BULK.clear()
 
-# ---------------------------
-# HTTP Endpoints
-# ---------------------------
 
+# ============================================================
+# === HTTP Endpoints
+# ============================================================
 @app.get("/spaces/{username}")
 def get_space_for_user(username: str):
-    """
-    GET /spaces/{username}
-    Returns short_url (and other details) in JSON AND always schedules Telegram send.
-    """
     if not username or not username.strip():
         raise HTTPException(status_code=400, detail="Username is required.")
 
@@ -283,37 +281,22 @@ def get_space_for_user(username: str):
         **{k: info[k] for k in ("username", "display_name", "space_id", "title", "short_url", "notified")}
     }
 
+
 @app.get("/spaces")
 def fetch_space(background_tasks: BackgroundTasks):
-    """
-    Bulk trigger over following list (runs every 5 mins).
-    - Prevents overlapping runs.
-    - Schedules adaptive background worker (up to 100 workers).
-    - Adds small jitter (0–5s) to avoid stampede starts.
-    """
-    try:
-        if _RUNNING_BULK.is_set():
-            return {"status": "Already running", "in_progress": True}
+    if _RUNNING_BULK.is_set():
+        return {"status": "Already running", "in_progress": True}
 
-        uList = DBProxy().GetFollowingList()
-        random.shuffle(uList)
-        count = len(uList)
+    uList = DBProxy().GetFollowingList()
+    random.shuffle(uList)
+    count = len(uList)
 
-        # Small jitter (0–5s)
-        start_delay = random.uniform(0.0, 5.0)
+    start_delay = random.uniform(0.0, 5.0)
 
-        def delayed_start():
-            try:
-                time.sleep(start_delay)
-                _bulk_spaces_worker(uList, max_workers=100)
-            except Exception as e:
-                logger.error(f"Delayed start failed: {e}", exc_info=True)
+    def delayed_start():
+        time.sleep(start_delay)
+        _bulk_spaces_worker(uList, max_workers=100)
 
-        background_tasks.add_task(delayed_start)
+    background_tasks.add_task(delayed_start)
 
-        logger.info(f"XSpacesExplore queued for {count} users (jitter={start_delay:.2f}s)")
-        return {"status": "Triggered", "count": count, "jitter_seconds": round(start_delay, 2)}
-
-    except Exception as e:
-        logger.error(f"Error scheduling /spaces bulk worker: {e}", exc_info=True)
-        return {"status": "Failed to start background task", "count": 0}
+    return {"status": "Triggered", "count": count, "jitter_seconds": round(start_delay, 2)}
