@@ -1,4 +1,18 @@
 # tg_link_bot.py
+#
+# Option 1 (Recommended for Render): Telethon StringSession from ENV
+#
+# Env vars required:
+#   BOT_TOKEN=...
+#   API_ID=23222227
+#   API_HASH=...
+#   TELETHON_STRING_SESSION=...   (generated once via Telethon StringSession)
+#
+# Reply format:
+#   • Title
+#      URL
+
+import os
 import asyncio
 import re
 from typing import List, Tuple, Optional
@@ -7,21 +21,24 @@ from telegram import Update, MessageEntity
 from telegram.ext import Application as TgApplication, MessageHandler, ContextTypes, filters
 
 from telethon import TelegramClient
+from telethon.sessions import StringSession
 from telethon.errors import (
-    UsernameInvalidError, UsernameNotOccupiedError,
-    InviteHashInvalidError, InviteHashExpiredError,
-    FloodWaitError, RPCError
+    UsernameInvalidError,
+    UsernameNotOccupiedError,
+    InviteHashInvalidError,
+    InviteHashExpiredError,
+    FloodWaitError,
+    RPCError,
 )
 from telethon.tl.functions.messages import CheckChatInviteRequest
 from telethon.tl.functions.chatlists import CheckChatlistInviteRequest
 
-
 # ----------------------------
 # Link classifier/extractor
 # ----------------------------
-INVITE_RE   = re.compile(r"(?i)(?:https?://)?(?:t\.me|telegram\.me)/\+([A-Za-z0-9_=-]+)")
+INVITE_RE = re.compile(r"(?i)(?:https?://)?(?:t\.me|telegram\.me)/\+([A-Za-z0-9_=-]+)")
 JOINCHAT_RE = re.compile(r"(?i)(?:https?://)?(?:t\.me|telegram\.me)/joinchat/([A-Za-z0-9_=-]+)")
-ADDLIST_RE  = re.compile(r"(?i)(?:https?://)?(?:t\.me|telegram\.me)/addlist/([A-Za-z0-9_=-]+)")
+ADDLIST_RE = re.compile(r"(?i)(?:https?://)?(?:t\.me|telegram\.me)/addlist/([A-Za-z0-9_=-]+)")
 USERNAME_RE = re.compile(r"(?i)(?:https?://)?(?:t\.me|telegram\.me)/([A-Za-z0-9_]{5,32})\b")
 URL_FALLBACK_RE = re.compile(r"(?i)\bhttps?://(?:t\.me|telegram\.me)/[^\s<>\]]+")
 
@@ -67,13 +84,16 @@ def _classify(url: str) -> Tuple[str, str]:
 
 
 def _extract_links(msg) -> List[str]:
+    """
+    Extract links from Telegram entities first (most reliable), then fallback regex.
+    """
     out = []
 
     # Entities in text
     if msg.text and msg.entities:
         for e in msg.entities:
             if e.type == MessageEntity.URL:
-                out.append(msg.text[e.offset: e.offset + e.length])
+                out.append(msg.text[e.offset : e.offset + e.length])
             elif e.type == MessageEntity.TEXT_LINK and e.url:
                 out.append(e.url)
 
@@ -81,11 +101,11 @@ def _extract_links(msg) -> List[str]:
     if msg.caption and msg.caption_entities:
         for e in msg.caption_entities:
             if e.type == MessageEntity.URL:
-                out.append(msg.caption[e.offset: e.offset + e.length])
+                out.append(msg.caption[e.offset : e.offset + e.length])
             elif e.type == MessageEntity.TEXT_LINK and e.url:
                 out.append(e.url)
 
-    # Fallback regex
+    # Fallback regex scan
     combined = (msg.text or "") + "\n" + (msg.caption or "")
     out.extend(URL_FALLBACK_RE.findall(combined))
 
@@ -99,7 +119,7 @@ def _extract_links(msg) -> List[str]:
 class TelegramLinkBotService:
     """
     Starts a python-telegram-bot polling loop in the background and uses a shared
-    Telethon USER client to fetch titles for Telegram links.
+    Telethon USER client (StringSession from env) to fetch titles for Telegram links.
 
     Reply format:
       • Title
@@ -108,16 +128,17 @@ class TelegramLinkBotService:
 
     def __init__(
         self,
-        bot_token: str,
-        api_id: int,
-        api_hash: str,
-        telethon_session: str,
+        bot_token: Optional[str] = None,
+        api_id: Optional[int] = None,
+        api_hash: Optional[str] = None,
+        telethon_string_session: Optional[str] = None,
         debug: bool = False,
     ):
-        self.bot_token = bot_token
-        self.api_id = api_id
-        self.api_hash = api_hash
-        self.telethon_session = telethon_session
+        # Allow explicit args or fallback to env vars
+        self.bot_token = bot_token or os.getenv("BOT_TOKEN", "")
+        self.api_id = api_id if api_id is not None else int(os.getenv("API_ID", "0"))
+        self.api_hash = api_hash or os.getenv("API_HASH", "")
+        self.string_session = telethon_string_session or os.getenv("TELETHON_STRING_SESSION", "")
         self.debug = debug
 
         self._bot_app: Optional[TgApplication] = None
@@ -125,6 +146,22 @@ class TelegramLinkBotService:
 
         self._tg_client: Optional[TelegramClient] = None
         self._tg_lock = asyncio.Lock()
+
+        self._validate_config()
+
+    def _validate_config(self) -> None:
+        missing = []
+        if not self.bot_token:
+            missing.append("BOT_TOKEN")
+        if not self.api_id:
+            missing.append("API_ID")
+        if not self.api_hash:
+            missing.append("API_HASH")
+        if not self.string_session:
+            missing.append("TELETHON_STRING_SESSION")
+
+        if missing:
+            raise RuntimeError(f"Missing required env/args: {', '.join(missing)}")
 
     async def start(self):
         """
@@ -177,15 +214,20 @@ class TelegramLinkBotService:
         await self._bot_app.updater.start_polling(drop_pending_updates=True)
 
     async def _ensure_user_client(self) -> TelegramClient:
+        """
+        Create/connect Telethon user client (StringSession) once.
+        """
         if self._tg_client is None:
-            self._tg_client = TelegramClient(self.telethon_session, self.api_id, self.api_hash)
+            self._tg_client = TelegramClient(
+                StringSession(self.string_session),
+                self.api_id,
+                self.api_hash,
+            )
             await self._tg_client.connect()
+
+            # If string session is invalid/expired, this will fail
             if not await self._tg_client.is_user_authorized():
-                raise RuntimeError(
-                    f"Telethon session '{self.telethon_session}' is not authorized. "
-                    f"Authorize once with phone login and deploy the .session file "
-                    f"(Render persistent disk) or use StringSession."
-                )
+                raise RuntimeError("Telethon StringSession is not authorized/valid.")
         return self._tg_client
 
     async def _get_title(self, client: TelegramClient, url: str) -> Optional[str]:
