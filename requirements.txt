@@ -15,3 +15,7 @@ cryptography==43.0.1    # recommended for SSL parsing
 colorama==0.4.6
 requests==2.32.3
 python-multipart==0.0.9
+
+# Telegram bot + Telethon (NEW)
+python-telegram-bot==21.6
+telethon==1.36.0
