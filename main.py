@@ -63,12 +63,15 @@ _RUNNING_BULK = threading.Event()
 # ============================================================
 @app.on_event("startup")
 async def startup_event():
+    # IMPORTANT: run uvicorn with --workers 1, otherwise multiple pollers fight.
     await tg_bot_service.start()
+    logger.info("TelegramLinkBotService started")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     await tg_bot_service.stop()
+    logger.info("TelegramLinkBotService stopped")
 
 
 # ============================================================
