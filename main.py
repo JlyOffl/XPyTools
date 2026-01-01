@@ -2,7 +2,8 @@ import threading
 import logging
 import random
 import time
-from typing import Optional
+from datetime import datetime
+from typing import Optional, List
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 
@@ -106,38 +107,57 @@ def _fetch_audio_core(space_id: str):
 
 
 # ============================================================
-# === Main functions (reused in bulk + single)
+# === Message builder (used by bulk + single)
 # ============================================================
-def get_audio_space_link(username: str):
+def build_space_message(username: str) -> Optional[str]:
     """
-    (Legacy bulk-thread function) Attempts to find and post a space link for the user.
-    Reuses core helpers and sends Telegram in a background thread to avoid blocking.
+    Build the Discord/Telegram message text for a single username.
+    Returns message string or None.
     """
     try:
         uname = _clean_username(username)
         if not uname:
-            return
+            return None
 
         core = _fetch_user_space_core(uname)
         if not core:
-            return
+            return None
         _, user_name, space_id, title = core
 
         audio_core = _fetch_audio_core(space_id)
         if not audio_core:
-            return
+            return None
         _, short_url = audio_core
 
-        tweet = (
+        msg = (
             f"Topic: {title}\n"
             f"ID: https://x.com/{uname} ({user_name})\n"
             f"AudioLink: {short_url}\n"
             f"Space: https://x.com/i/spaces/{space_id}"
         )
+        return msg
+
+    except Exception as e:
+        logger.error(f"build_space_message error for {username}: {e}", exc_info=True)
+        return None
+
+
+# ============================================================
+# === Main functions (reused in bulk + single)
+# ============================================================
+def get_audio_space_link(username: str):
+    """
+    (Legacy single-thread function) Attempts to find and post a space link for the user.
+    NOTE: Bulk flow no longer uses this; bulk consolidates into ONE Discord message.
+    """
+    try:
+        msg = build_space_message(username)
+        if not msg:
+            return
 
         # non-blocking notification
         threading.Thread(
-            target=lambda: send_discord_message(tweet),
+            target=lambda: send_discord_message(msg),
             daemon=True
         ).start()
 
@@ -197,14 +217,17 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Op
 
 
 # ============================================================
-# === Adaptive, overlap-safe bulk worker
+# === Adaptive, overlap-safe bulk worker (ONE Discord message)
 # ============================================================
 def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
     """
-    Submits get_audio_space_link for each username with adaptive concurrency
-    and gentle throttling. Safe for 300+ users.
+    Builds messages for each username concurrently and sends ONE consolidated Discord message.
+    - No message-id storage needed
+    - Adds separators between sections
+    - If content exceeds Discord 2000-char limit, it will TRUNCATE and report omitted count
+      (strict one-message mode).
     """
-    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     import math
 
     if _RUNNING_BULK.is_set():
@@ -222,10 +245,34 @@ def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
         if delay_range is None:
             delay_range = (0.1, 0.3) if n >= 200 else (0.3, 0.8) if n >= 50 else (0.5, 1.5)
 
+        results: List[str] = []
+
         with ThreadPoolExecutor(max_workers=effective_workers) as executor:
+            futures = []
             for uname in usernames:
-                executor.submit(get_audio_space_link, uname)
+                futures.append(executor.submit(build_space_message, uname))
                 time.sleep(random.uniform(*delay_range))
+
+            for f in as_completed(futures):
+                try:
+                    msg = f.result()
+                    if msg:
+                        results.append(msg)
+                except Exception as e:
+                    logger.error(f"Bulk future error: {e}", exc_info=True)
+
+        # Sort (optional) for stable output. You can remove if you prefer arrival order.
+        results.sort()
+
+        ts = datetime.now().strftime("%Y-%m-%d %I:%M %p")
+        header = f"🕒 Refresh: {ts}\nCount: {len(results)}\n"
+
+        # Send exactly ONE message (truncate if too long)
+        send_discord_message_batch(
+            results,
+            header=header,
+            strict_one_message=False
+        )
 
     finally:
         _RUNNING_BULK.clear()
