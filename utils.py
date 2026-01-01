@@ -109,7 +109,8 @@ def send_discord_message(message):
     webhook_url = DBProxy().GetSettingValue('DiscordWebhookURL')
 
     payload = {
-        "content": message  # Discord message text
+        "content": message,
+        "flags": 4  # SUPPRESS_EMBEDS → disables link previews
     }
 
     response = requests.post(
@@ -118,9 +119,8 @@ def send_discord_message(message):
         timeout=10
     )
 
-    # Discord returns 204 No Content on success
     if response.status_code not in (200, 204):
-        raise Exception(f"Discord error: {response.status_code} - {response.text}")
+        raise Exception(f"Discord error {response.status_code}: {response.text}")
 
     return {
         "ok": True,
