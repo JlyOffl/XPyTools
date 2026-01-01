@@ -137,7 +137,7 @@ def get_audio_space_link(username: str):
 
         # non-blocking notification
         threading.Thread(
-            target=lambda: send_telegram_message(tweet),
+            target=lambda: send_discord_message(tweet),
             daemon=True
         ).start()
 
