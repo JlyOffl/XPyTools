@@ -103,14 +103,17 @@ def send_telegram_message(message):
     #print (response.text)
     return response.json()
 
+SEPARATOR = "\n────────────\n"
+
 def send_discord_message(message):
     message = message.replace("https://tinyurl.com/", " @")
+    message = message.rstrip() + SEPARATOR
 
     webhook_url = DBProxy().GetSettingValue('DiscordWebhookURL')
 
     payload = {
         "content": message,
-        "flags": 4  # SUPPRESS_EMBEDS → disables link previews
+        "flags": 4  # SUPPRESS_EMBEDS (no link previews)
     }
 
     response = requests.post(
@@ -122,10 +125,8 @@ def send_discord_message(message):
     if response.status_code not in (200, 204):
         raise Exception(f"Discord error {response.status_code}: {response.text}")
 
-    return {
-        "ok": True,
-        "status_code": response.status_code
-    }
+    return True
+
 
 def get_chat_history(bot_token, chat_id, limit=100):
     """Retrieve chat history using getUpdates."""
