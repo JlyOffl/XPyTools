@@ -130,10 +130,10 @@ def build_space_message(username: str) -> Optional[str]:
         _, short_url = audio_core
 
         msg = (
-            f"Topic: {title}\n"
-            f"ID: https://x.com/{uname} ({user_name})\n"
-            f"AudioLink: {short_url}\n"
-            f"Space: https://x.com/i/spaces/{space_id}"
+            f"📰 : {title}\n"
+            f"👤 : https://x.com/{uname} ({user_name})\n"
+            f"🎧 : {short_url}\n"
+            f"🎙️ : https://x.com/i/spaces/{space_id}"
         )
         return msg
 
@@ -186,10 +186,10 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Op
         audio_url, short_url = audio_core
 
         tweet = (
-            f"Topic: {title}\n"
-            f"ID: https://x.com/{uname} ({user_name})\n"
-            f"AudioLink: {short_url}\n"
-            f"Space: https://x.com/i/spaces/{space_id}"
+            f"📰 : {title}\n"
+            f"👤 : https://x.com/{uname} ({user_name})\n"
+            f"🎧 : {short_url}\n"
+            f"🎙️ : https://x.com/i/spaces/{space_id}"
         )
 
         notified = False
