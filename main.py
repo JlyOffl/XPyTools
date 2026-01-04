@@ -3,7 +3,7 @@ import logging
 import random
 import time
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, Tuple
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 
@@ -107,12 +107,13 @@ def _fetch_audio_core(space_id: str):
 
 
 # ============================================================
-# === Message builder (used by bulk + single)
+# === New: build a single "space record" (for grouping)
 # ============================================================
-def build_space_message(username: str) -> Optional[str]:
+def build_space_record(username: str) -> Optional[Dict[str, Any]]:
     """
-    Build the Discord/Telegram message text for a single username.
-    Returns message string or None.
+    Return a dict record:
+      { title, space_id, short_url, uname, display_name }
+    Used by bulk to group by space_id.
     """
     try:
         uname = _clean_username(username)
@@ -122,18 +123,65 @@ def build_space_message(username: str) -> Optional[str]:
         core = _fetch_user_space_core(uname)
         if not core:
             return None
-        _, user_name, space_id, title = core
+        _, display_name, space_id, title = core
 
         audio_core = _fetch_audio_core(space_id)
         if not audio_core:
             return None
         _, short_url = audio_core
 
+        return {
+            "title": title,
+            "space_id": space_id,
+            "short_url": short_url,
+            "uname": uname,
+            "display_name": display_name,
+        }
+
+    except Exception as e:
+        logger.error(f"build_space_record error for {username}: {e}", exc_info=True)
+        return None
+
+
+def _format_grouped_space_message(title: str, short_url: str, space_id: str, users: List[Tuple[str, str]]) -> str:
+    """
+    Build ONE message block for a space, with multiple user lines.
+    Format requested:
+      📰 title
+      🎧 short_url
+      🎙️ space link
+      👤 user lines...
+    """
+    lines = [
+        f"📰 : {title}",
+        f"🎧 : **{short_url}**",
+        f"🎙️ : https://x.com/i/spaces/{space_id}",
+    ]
+    # Users (one per line)
+    for uname, display_name in users:
+        lines.append(f"👤 : https://x.com/{uname} ({display_name})")
+    return "\n".join(lines)
+
+
+# ============================================================
+# === Message builder (used by single-user flows)
+# ============================================================
+def build_space_message(username: str) -> Optional[str]:
+    """
+    Build the Discord/Telegram message text for a single username.
+    Returns message string or None.
+    """
+    try:
+        rec = build_space_record(username)
+        if not rec:
+            return None
+
+        # Single-user message (kept mostly same, but order matches your latest preference)
         msg = (
-            f"📰 : {title}\n"
-            f"👤 : https://x.com/{uname} ({user_name})\n"
-            f"🎧 : {short_url}\n"
-            f"🎙️ : https://x.com/i/spaces/{space_id}"
+            f"📰 : {rec['title']}\n"
+            f"🎧 : {rec['short_url']}\n"
+            f"🎙️ : https://x.com/i/spaces/{rec['space_id']}\n"
+            f"👤 : https://x.com/{rec['uname']} ({rec['display_name']})"
         )
         return msg
 
@@ -187,9 +235,9 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Op
 
         tweet = (
             f"📰 : {title}\n"
-            f"👤 : https://x.com/{uname} ({user_name})\n"
-            f"🎧 : {short_url}\n"
-            f"🎙️ : https://x.com/i/spaces/{space_id}"
+            f"🎧 : **{short_url}**\n"
+            f"🎙️ : https://x.com/i/spaces/{space_id}\n"
+            f"👤 : https://x.com/{uname} ({user_name})"
         )
 
         notified = False
@@ -217,15 +265,18 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Op
 
 
 # ============================================================
-# === Adaptive, overlap-safe bulk worker (ONE Discord message)
+# === Adaptive, overlap-safe bulk worker (GROUPED by space_id)
 # ============================================================
 def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
     """
-    Builds messages for each username concurrently and sends ONE consolidated Discord message.
-    - No message-id storage needed
-    - Adds separators between sections
-    - If content exceeds Discord 2000-char limit, it will TRUNCATE and report omitted count
-      (strict one-message mode).
+    Builds space records for each username concurrently, GROUPS by space_id,
+    and sends consolidated Discord message(s) with grouped blocks.
+
+    Each block format:
+      📰 title
+      🎧 short_url
+      🎙️ space link
+      👤 user lines...
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
     import math
@@ -245,31 +296,69 @@ def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
         if delay_range is None:
             delay_range = (0.1, 0.3) if n >= 200 else (0.3, 0.8) if n >= 50 else (0.5, 1.5)
 
-        results: List[str] = []
+        records: List[Dict[str, Any]] = []
 
         with ThreadPoolExecutor(max_workers=effective_workers) as executor:
             futures = []
             for uname in usernames:
-                futures.append(executor.submit(build_space_message, uname))
+                futures.append(executor.submit(build_space_record, uname))
                 time.sleep(random.uniform(*delay_range))
 
             for f in as_completed(futures):
                 try:
-                    msg = f.result()
-                    if msg:
-                        results.append(msg)
+                    rec = f.result()
+                    if rec:
+                        records.append(rec)
                 except Exception as e:
                     logger.error(f"Bulk future error: {e}", exc_info=True)
 
-        # Sort (optional) for stable output. You can remove if you prefer arrival order.
-        results.sort()
+        if not records:
+            return
+
+        # Group by space_id (space_id/title/short_url should match per your requirement)
+        grouped: Dict[str, Dict[str, Any]] = {}
+        for r in records:
+            sid = r["space_id"]
+            g = grouped.get(sid)
+            if not g:
+                grouped[sid] = {
+                    "title": r["title"],
+                    "space_id": sid,
+                    "short_url": r["short_url"],
+                    "users": [(r["uname"], r["display_name"])],
+                }
+            else:
+                g["users"].append((r["uname"], r["display_name"]))
+
+        # Build blocks (one per space)
+        blocks: List[str] = []
+        # Sort groups for stable output
+        for sid in sorted(grouped.keys()):
+            g = grouped[sid]
+            # dedupe users (keep order)
+            seen_u = set()
+            uniq_users = []
+            for u, dn in g["users"]:
+                if u not in seen_u:
+                    seen_u.add(u)
+                    uniq_users.append((u, dn))
+            g["users"] = uniq_users
+
+            blocks.append(
+                _format_grouped_space_message(
+                    title=g["title"],
+                    short_url=g["short_url"],
+                    space_id=g["space_id"],
+                    users=g["users"],
+                )
+            )
 
         ts = datetime.now().strftime("%Y-%m-%d %I:%M %p")
-        header = f"🕒 Refresh: {ts}\nCount: {len(results)}\n"
+        header = f"🕒 Refresh: {ts}\nSpaces: {len(blocks)} | Users matched: {len(records)}\n"
 
-        # Send exactly ONE message (truncate if too long)
+        # Send grouped blocks (your util can chunk if needed)
         send_discord_message_batch(
-            results,
+            blocks,
             header=header,
             strict_one_message=False
         )
