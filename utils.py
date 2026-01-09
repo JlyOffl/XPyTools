@@ -13,8 +13,7 @@ from typing import List, Optional
 # ============================================================
 # === HARDENED urllib.parse symbols (bullet-proof)
 # ============================================================
-# Even if a deploy/import glitch somehow drops "from urllib.parse import ...",
-# these names will ALWAYS exist, preventing NameError at runtime.
+# These names will ALWAYS exist, preventing NameError at runtime.
 import urllib.parse as _up
 urlparse = _up.urlparse
 urlunparse = _up.urlunparse
@@ -126,14 +125,17 @@ def send_telegram_message(message):
 
 
 # ============================================================
-# === Discord Webhook Messaging
+# === Discord Webhook Messaging (WITH DELETE + JSON STORAGE)
 # ============================================================
+
 SUPPRESS_EMBEDS_FLAG = 4
 SEPARATOR = "\n────────────\n"
-MAX_DISCORD_CONTENT_LEN = 1900  # Discord message content limit
+MAX_DISCORD_CONTENT_LEN = 1900  # Discord message content limit (keep buffer under 2000)
 
 # Store sent webhook message IDs in CURRENT folder
 DISCORD_SENT_IDS_JSON = "discord_sent_ids.json"
+
+# Safety limit for stored IDs
 DISCORD_IDS_MAX_KEEP = 200
 
 # In-process lock so concurrent background tasks don't corrupt JSON
@@ -142,29 +144,22 @@ _DISCORD_IDS_LOCK = threading.Lock()
 
 def _ensure_wait_true(webhook_url: str) -> str:
     """
-    Ensure webhook URL includes wait=true so Discord returns created message JSON (incl. id).
+    Ensure ?wait=true is present so Discord returns message JSON (id).
     """
-    # Extra-hardening: even if globals are weird, local import is safe
-    # (but globals above already define urlparse/urlunparse/parse_qsl/urlencode)
     if not webhook_url:
         return webhook_url
 
     parsed = urlparse(webhook_url)
     q = dict(parse_qsl(parsed.query, keep_blank_values=True))
     q["wait"] = "true"
-    new_query = urlencode(q)
-
-    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
+    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, urlencode(q), parsed.fragment))
 
 
 def _webhook_delete_url(webhook_url: str, message_id: str) -> str:
     """
-    Discord delete endpoint for webhook messages:
-      {webhook_url}/messages/{message_id}
+    Build webhook delete URL:
+    {webhook_url}/messages/{message_id}
     """
-    if not webhook_url:
-        return webhook_url
-
     parsed = urlparse(webhook_url)
     base = urlunparse((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", "", ""))
     return f"{base}/messages/{message_id}"
@@ -205,6 +200,9 @@ def _save_discord_sent_ids(ids: List[str]) -> None:
 
 
 def _append_sent_id(message_id: str) -> None:
+    """
+    Append a newly sent webhook message ID.
+    """
     if not message_id:
         return
     with _DISCORD_IDS_LOCK:
@@ -215,8 +213,11 @@ def _append_sent_id(message_id: str) -> None:
 
 def _delete_previous_discord_messages(webhook_url: str) -> None:
     """
-    Delete all previously sent webhook messages whose IDs are stored in JSON.
-    Keeps any IDs that fail deletion.
+    Delete previously sent webhook messages using stored message IDs.
+
+    IMPORTANT (per your requirement):
+    - Only remove IDs from JSON if delete DEFINITELY succeeded (204 or 404).
+    - If delete fails (429/other/exception), KEEP the ID so it retries next run.
     """
     if not webhook_url:
         return
@@ -228,11 +229,14 @@ def _delete_previous_discord_messages(webhook_url: str) -> None:
         return
 
     remaining: List[str] = []
-    for mid in ids:
-        try:
-            url = _webhook_delete_url(webhook_url, mid)
-            r = requests.delete(url, timeout=10)
 
+    # Delete newest first (more reliable)
+    for mid in reversed(ids):
+        try:
+            delete_url = _webhook_delete_url(webhook_url, mid)
+            r = requests.delete(delete_url, timeout=10)
+
+            # Handle rate limit
             if r.status_code == 429:
                 retry_after = r.headers.get("Retry-After")
                 if retry_after is None:
@@ -240,17 +244,23 @@ def _delete_previous_discord_messages(webhook_url: str) -> None:
                         retry_after = r.json().get("retry_after", 1.0)
                     except Exception:
                         retry_after = 1.0
+
                 time.sleep(float(retry_after))
-                r = requests.delete(url, timeout=10)
+                r = requests.delete(delete_url, timeout=10)
 
-            # 204 deleted ok; 404 already gone -> ok
-            if r.status_code not in (204, 404):
-                remaining.append(mid)
+            # ✅ success cases: deleted or already gone
+            if r.status_code in (204, 404):
+                time.sleep(0.2)
+                continue
 
-            time.sleep(0.15)
+            # ❌ failure: keep for next retry
+            remaining.append(mid)
+            time.sleep(0.5)
 
         except Exception:
+            # ❌ failure: keep for next retry
             remaining.append(mid)
+            time.sleep(0.5)
 
     with _DISCORD_IDS_LOCK:
         _save_discord_sent_ids(remaining)
@@ -258,10 +268,11 @@ def _delete_previous_discord_messages(webhook_url: str) -> None:
 
 def _post_webhook_and_store_id(webhook_url: str, payload: dict) -> None:
     """
-    Post to webhook with wait=true and store the returned message id.
+    POST to webhook with wait=true so we can store the message id.
     Handles 429 rate limit.
     """
     webhook_url_wait = _ensure_wait_true(webhook_url)
+
     r = requests.post(webhook_url_wait, json=payload, timeout=10)
 
     if r.status_code == 429:
@@ -277,6 +288,7 @@ def _post_webhook_and_store_id(webhook_url: str, payload: dict) -> None:
     if r.status_code not in (200, 204):
         raise Exception(f"Discord error {r.status_code}: {r.text}")
 
+    # With wait=true, Discord returns JSON for created message (status 200)
     if r.status_code == 200:
         try:
             mid = r.json().get("id")
@@ -288,12 +300,9 @@ def _post_webhook_and_store_id(webhook_url: str, payload: dict) -> None:
 
 def send_discord_message(message: str) -> bool:
     """
-    Send a single Discord webhook message (with separator appended).
-    Suppresses link previews (embeds).
-
-    NEW:
-      - Deletes previously sent webhook messages (stored in JSON) BEFORE sending.
-      - Stores the new message ID into JSON.
+    Send ONE Discord webhook message.
+    Deletes old webhook messages first.
+    Stores the new message id in discord_sent_ids.json.
     """
     message = (message or "").replace("https://tinyurl.com/", " @")
     message = message.rstrip() + SEPARATOR
@@ -306,7 +315,7 @@ def send_discord_message(message: str) -> bool:
 
     payload = {
         "content": message,
-        "flags": SUPPRESS_EMBEDS_FLAG  # no link previews
+        "flags": SUPPRESS_EMBEDS_FLAG
     }
 
     _post_webhook_and_store_id(webhook_url, payload)
@@ -338,13 +347,15 @@ def _build_one_discord_message(
 
         # If a single block is too big, truncate that block.
         if len(piece) > max_len:
+            # Leave room for note
             room = max_len - len(msg) - 60
             if room > 0:
                 msg += piece[:room].rstrip() + "\n…(truncated)\n"
                 included += 1
             else:
                 omitted += 1
-            omitted += sum(1 for x in blocks[included + omitted:] if (x or "").strip())
+            # everything after is omitted
+            omitted += sum(1 for x in blocks[included+omitted:] if (x or "").strip())
             break
 
         if len(msg) + len(piece) > max_len:
@@ -365,17 +376,15 @@ def send_discord_message_batch(
     strict_one_message: bool = True
 ) -> bool:
     """
-    Send a consolidated Discord message for a batch.
+    Send batched Discord webhook messages.
+    Deletes previous messages before sending new ones.
+    Stores the new message id(s) in discord_sent_ids.json.
 
     If strict_one_message=True (default):
       - Sends exactly ONE message, truncating/omitting overflow with a note.
 
     If strict_one_message=False:
       - Sends as many messages as needed (chunked to 2000 chars each).
-
-    NEW:
-      - Deletes previously sent webhook messages (stored in JSON) BEFORE sending.
-      - Stores the new message ID(s) into JSON.
     """
     webhook_url = DBProxy().GetSettingValue('DiscordWebhookURL')
     if not webhook_url:
@@ -395,7 +404,6 @@ def send_discord_message_batch(
     # Chunked mode (multiple messages if needed)
     messages: List[str] = []
     current = (header.strip() + "\n") if header else ""
-
     for b in blocks:
         b = (b or "").replace("https://tinyurl.com/", " @").strip()
         if not b:
@@ -403,6 +411,7 @@ def send_discord_message_batch(
         piece = b + SEPARATOR
 
         if len(piece) > MAX_DISCORD_CONTENT_LEN:
+            # flush current, then hard-split the big piece
             if current.strip():
                 messages.append(current.rstrip())
                 current = ""
