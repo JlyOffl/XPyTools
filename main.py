@@ -78,7 +78,7 @@ def _short_url_block(short_url: str) -> str:
     if not s:
         return ""
 
-    thin = "\u200A"  # hair space (tiny spacer)
+    thin = "\u200B"  # hair space (tiny spacer)
     # IMPORTANT: keep URLs on their own lines for iOS autolinking
     return f"\n{thin}\n**{s}**\n{thin}\n"
 
