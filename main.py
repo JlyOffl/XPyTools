@@ -43,17 +43,25 @@ def _clean_username(username: str) -> str:
     return (username or "").strip().lstrip("@")
 
 
-def _pad_bottom() -> str:
-    """Invisible padding line for nicer spacing in Discord."""
-    return "\u200b"
-
-
 def _url_line(url: str, bold: bool = False) -> str:
-    """Return a URL on its own line (best for Discord iOS autolinking)."""
+    """Return URL as-is; bold optional. Best for iOS autolinking when URL is alone on its line."""
     url = (url or "").strip()
     if not url:
         return ""
     return f"**{url}**" if bold else url
+
+
+def _user_line(uname: str, display_name: str) -> str:
+    """
+    iOS-friendly: URL must remain the start of the token.
+    Format: https://x.com/user (Display Name)
+    """
+    u = _clean_username(uname)
+    dn = (display_name or "").strip()
+    url = f"https://x.com/{u}" if u else ""
+    if not url:
+        return ""
+    return f"{url} ({dn})" if dn else url
 
 
 # ============================================================
@@ -160,29 +168,26 @@ def _format_grouped_space_message(title: str, short_url: str, space_id: str, use
     """
     Build ONE message block for a space, with multiple user lines.
 
-    iOS-friendly format rules:
-      - Each URL is on its own line
-      - Short URL is bold, but we also include the plain URL on the next line for maximum iOS autolink reliability
-      - Bottom padding added
+    Requirements:
+      - No icons
+      - No extra padding
+      - Each URL on its own line for iOS autolink reliability
+      - short_url bold
+      - user url + display name in same line
     """
     space_link = f"https://x.com/i/spaces/{space_id}"
 
     lines = [
         f"{title}",
-        "",
         _url_line(short_url, bold=True),
-        _url_line(short_url, bold=False),
+        _url_line(short_url, bold=False),   # iOS fallback
         _url_line(space_link),
     ]
 
-    # Users: URL on its own line; keep display name on the next line (so URL stays auto-linkable on iOS).
     for uname, display_name in users:
-        lines.append(_url_line(f"https://x.com/{uname}"))
-        if display_name:
-            lines.append(f"({display_name})")
-
-    lines.append("")
-    lines.append(_pad_bottom())
+        ul = _user_line(uname, display_name)
+        if ul:
+            lines.append(ul)
 
     return "\n".join(lines)
 
@@ -201,18 +206,14 @@ def build_space_message(username: str) -> Optional[str]:
             return None
 
         space_link = f"https://x.com/i/spaces/{rec['space_id']}"
-        profile_link = f"https://x.com/{rec['uname']}"
 
-        # iOS-friendly format: each URL on its own line.
-        # Keep short_url bold *and* include a plain version on the next line for maximum autolink reliability.
+        # iOS-friendly: each URL on its own line
         msg = (
-            f"{rec['title']}\n\n"
+            f"{rec['title']}\n"
             f"{_url_line(rec['short_url'], bold=True)}\n"
             f"{_url_line(rec['short_url'], bold=False)}\n"
             f"{_url_line(space_link)}\n"
-            f"{_url_line(profile_link)}\n"
-            f"({rec['display_name']})\n\n"
-            f"{_pad_bottom()}"
+            f"{_user_line(rec['uname'], rec['display_name'])}"
         )
         return msg
 
@@ -265,16 +266,13 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Op
         audio_url, short_url = audio_core
 
         space_link = f"https://x.com/i/spaces/{space_id}"
-        profile_link = f"https://x.com/{uname}"
 
         tweet = (
-            f"{title}\n\n"
+            f"{title}\n"
             f"{_url_line(short_url, bold=True)}\n"
             f"{_url_line(short_url, bold=False)}\n"
             f"{_url_line(space_link)}\n"
-            f"{_url_line(profile_link)}\n"
-            f"({user_name})\n\n"
-            f"{_pad_bottom()}"
+            f"{_user_line(uname, user_name)}"
         )
 
         notified = False
@@ -346,7 +344,7 @@ def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
         if not records:
             return
 
-        # Group by space_id (space_id/title/short_url should match per your requirement)
+        # Group by space_id
         grouped: Dict[str, Dict[str, Any]] = {}
         for r in records:
             sid = r["space_id"]
@@ -363,10 +361,8 @@ def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
 
         # Build blocks (one per space)
         blocks: List[str] = []
-        # Sort groups for stable output
         for sid in sorted(grouped.keys()):
             g = grouped[sid]
-            # dedupe users (keep order)
             seen_u = set()
             uniq_users = []
             for u, dn in g["users"]:
@@ -387,7 +383,6 @@ def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
         ts = datetime.now().strftime("%Y-%m-%d %I:%M %p")
         header = f"Refresh: {ts}\nSpaces: {len(blocks)} | Users matched: {len(records)}\n"
 
-        # Send grouped blocks (your util can chunk if needed)
         send_discord_message_batch(
             blocks,
             header=header,
