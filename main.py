@@ -65,10 +65,12 @@ def _user_line(uname: str, display_name: str) -> str:
 
 
 def _short_url_block(short_url: str) -> str:
+    """Short URL should be bold ONLY (no padding)."""
     s = (short_url or "").strip()
     if not s:
         return ""
     return f"**{s}**"
+
 
 # ============================================================
 # === DRY helpers (reuse across both flows)
@@ -176,23 +178,23 @@ def _format_grouped_space_message(title: str, short_url: str, space_id: str, use
 
     Requirements:
       - No icons
-      - short url bold with tiny padding ONLY (thin-space lines)
-      - user url + display name in same line
+      - No padding
+      - Only short URL is bold
       - URLs remain on their own line for iOS autolinking
+      - user url + display name in same line
     """
     space_link = f"https://x.com/i/spaces/{space_id}"
 
     lines: List[str] = [f"{title}"]
 
-    # Add tiny spacing only around bold short URL
-    lines.append(_short_url_block(short_url).rstrip("\n"))
+    su = _short_url_block(short_url)
+    if su:
+        lines.append(su)
 
-    # Space URL (on its own line)
     space_line = _url_line(space_link)
     if space_line:
         lines.append(space_line)
 
-    # Users: URL + displayname on one line
     for uname, display_name in users:
         ul = _user_line(uname, display_name)
         if ul:
@@ -274,9 +276,10 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Op
 
         space_link = f"https://x.com/i/spaces/{space_id}"
 
+        # IMPORTANT: keep newlines (no padding), bold short url only
         tweet = (
-            f"{title}"
-            f"{_short_url_block(short_url)}"
+            f"{title}\n"
+            f"{_short_url_block(short_url)}\n"
             f"{_url_line(space_link)}\n"
             f"{_user_line(uname, user_name)}"
         )
