@@ -44,6 +44,22 @@ def _clean_username(username: str) -> str:
 
 
 # ============================================================
+# === New helper: "Copy link" format for Discord
+# ============================================================
+def _format_copy_link(url: str, label: str = "Copy") -> str:
+    """
+    Return:
+      [Copy](url) <url>
+    - [Copy](url) gives a clean label in Discord
+    - <url> forces Discord to preserve/show the raw URL for copy/paste reliability
+    """
+    url = (url or "").strip()
+    if not url:
+        return ""
+    return f"[{label}]({url}) <{url}>"
+
+
+# ============================================================
 # === DRY helpers (reuse across both flows)
 # ============================================================
 def _fetch_user_space_core(uname: str):
@@ -148,14 +164,16 @@ def _format_grouped_space_message(title: str, short_url: str, space_id: str, use
     Build ONE message block for a space, with multiple user lines.
     Format requested:
       📰 title
-      🎧 short_url
-      🎙️ space link
+      🎧 [Copy](short_url) <short_url>
+      🎙️ [Copy](space link) <space link>
       👤 user lines...
     """
+    space_link = f"https://x.com/i/spaces/{space_id}"
+
     lines = [
         f"📰 : {title}",
-        f"🎧 : **{short_url}**",
-        f"🎙️ : https://x.com/i/spaces/{space_id}",
+        f"🎧 : {_format_copy_link(short_url)}",
+        f"🎙️ : {_format_copy_link(space_link)}",
     ]
     # Users (one per line)
     for uname, display_name in users:
@@ -176,11 +194,13 @@ def build_space_message(username: str) -> Optional[str]:
         if not rec:
             return None
 
+        space_link = f"https://x.com/i/spaces/{rec['space_id']}"
+
         # Single-user message (kept mostly same, but order matches your latest preference)
         msg = (
             f"📰 : {rec['title']}\n"
-            f"🎧 : {rec['short_url']}\n"
-            f"🎙️ : https://x.com/i/spaces/{rec['space_id']}\n"
+            f"🎧 : {_format_copy_link(rec['short_url'])}\n"
+            f"🎙️ : {_format_copy_link(space_link)}\n"
             f"👤 : https://x.com/{rec['uname']} ({rec['display_name']})"
         )
         return msg
@@ -233,10 +253,12 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Op
             return None
         audio_url, short_url = audio_core
 
+        space_link = f"https://x.com/i/spaces/{space_id}"
+
         tweet = (
             f"📰 : {title}\n"
-            f"🎧 : **{short_url}**\n"
-            f"🎙️ : https://x.com/i/spaces/{space_id}\n"
+            f"🎧 : {_format_copy_link(short_url)}\n"
+            f"🎙️ : {_format_copy_link(space_link)}\n"
             f"👤 : https://x.com/{uname} ({user_name})"
         )
 
@@ -274,8 +296,8 @@ def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
 
     Each block format:
       📰 title
-      🎧 short_url
-      🎙️ space link
+      🎧 [Copy](short_url) <short_url>
+      🎙️ [Copy](space link) <space link>
       👤 user lines...
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
