@@ -68,7 +68,7 @@ def _short_url_block(short_url: str) -> str:
     s = (short_url or "").strip()
     if not s:
         return ""
-    return f"\n**{s}**\n"
+    return f"**{s}**"
 
 # ============================================================
 # === DRY helpers (reuse across both flows)
@@ -217,8 +217,8 @@ def build_space_message(username: str) -> Optional[str]:
         space_link = f"https://x.com/i/spaces/{rec['space_id']}"
 
         msg = (
-            f"{rec['title']}"
-            f"{_short_url_block(rec['short_url'])}"
+            f"{rec['title']}\n"
+            f"{_short_url_block(rec['short_url'])}\n"
             f"{_url_line(space_link)}\n"
             f"{_user_line(rec['uname'], rec['display_name'])}"
         )
