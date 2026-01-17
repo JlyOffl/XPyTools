@@ -65,23 +65,10 @@ def _user_line(uname: str, display_name: str) -> str:
 
 
 def _short_url_block(short_url: str) -> str:
-    """
-    Tiny padding around the bold short URL using a thin-space line.
-    This avoids the large visual gap of blank lines while still giving a little separation.
-
-    Output:
-      <thin-space line>
-      **short_url**
-      <thin-space line>
-    """
     s = (short_url or "").strip()
     if not s:
         return ""
-
-    thin = "\u200B"  # hair space (tiny spacer)
-    # IMPORTANT: keep URLs on their own lines for iOS autolinking
-    return f"\n{thin}\n**{s}**\n{thin}\n"
-
+    return f"\n**{s}**\n"
 
 # ============================================================
 # === DRY helpers (reuse across both flows)
