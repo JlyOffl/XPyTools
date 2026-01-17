@@ -46,18 +46,11 @@ def _clean_username(username: str) -> str:
 # ============================================================
 # === New helper: "Copy link" format for Discord
 # ============================================================
-def _format_copy_link(url: str, label: str = "Copy") -> str:
-    """
-    Return:
-      [Copy](url) <url>
-    - [Copy](url) gives a clean label in Discord
-    - <url> forces Discord to preserve/show the raw URL for copy/paste reliability
-    """
+def _format_copy_link(url: str) -> str:
     url = (url or "").strip()
     if not url:
         return ""
-    return f"[{label}]({url}) <{url}>"
-
+    return f"<{url}>"
 
 # ============================================================
 # === DRY helpers (reuse across both flows)
