@@ -44,7 +44,7 @@ def _clean_username(username: str) -> str:
 
 
 def _url_line(url: str, bold: bool = False) -> str:
-    """Return URL as-is; bold optional. Best for iOS autolinking when URL is alone on its line."""
+    """Return URL as-is; bold optional."""
     url = (url or "").strip()
     if not url:
         return ""
@@ -53,7 +53,7 @@ def _url_line(url: str, bold: bool = False) -> str:
 
 def _user_line(uname: str, display_name: str) -> str:
     """
-    iOS-friendly: URL must remain the start of the token.
+    iOS-friendly: URL starts the line, display name at end
     Format: https://x.com/user (Display Name)
     """
     u = _clean_username(uname)
@@ -62,6 +62,25 @@ def _user_line(uname: str, display_name: str) -> str:
     if not url:
         return ""
     return f"{url} ({dn})" if dn else url
+
+
+def _short_url_block(short_url: str) -> str:
+    """
+    Tiny padding around the bold short URL using a thin-space line.
+    This avoids the large visual gap of blank lines while still giving a little separation.
+
+    Output:
+      <thin-space line>
+      **short_url**
+      <thin-space line>
+    """
+    s = (short_url or "").strip()
+    if not s:
+        return ""
+
+    thin = "\u200A"  # hair space (tiny spacer)
+    # IMPORTANT: keep URLs on their own lines for iOS autolinking
+    return f"\n{thin}\n**{s}**\n{thin}\n"
 
 
 # ============================================================
@@ -170,20 +189,23 @@ def _format_grouped_space_message(title: str, short_url: str, space_id: str, use
 
     Requirements:
       - No icons
-      - No extra padding
-      - Each URL on its own line for iOS autolink reliability
-      - short_url bold
+      - short url bold with tiny padding ONLY (thin-space lines)
       - user url + display name in same line
+      - URLs remain on their own line for iOS autolinking
     """
     space_link = f"https://x.com/i/spaces/{space_id}"
 
-    lines = [
-        f"{title}",
-        _url_line(short_url, bold=True),
-        _url_line(short_url, bold=False),   # iOS fallback
-        _url_line(space_link),
-    ]
+    lines: List[str] = [f"{title}"]
 
+    # Add tiny spacing only around bold short URL
+    lines.append(_short_url_block(short_url).rstrip("\n"))
+
+    # Space URL (on its own line)
+    space_line = _url_line(space_link)
+    if space_line:
+        lines.append(space_line)
+
+    # Users: URL + displayname on one line
     for uname, display_name in users:
         ul = _user_line(uname, display_name)
         if ul:
@@ -207,11 +229,9 @@ def build_space_message(username: str) -> Optional[str]:
 
         space_link = f"https://x.com/i/spaces/{rec['space_id']}"
 
-        # iOS-friendly: each URL on its own line
         msg = (
-            f"{rec['title']}\n"
-            f"{_url_line(rec['short_url'], bold=True)}\n"
-            f"{_url_line(rec['short_url'], bold=False)}\n"
+            f"{rec['title']}"
+            f"{_short_url_block(rec['short_url'])}"
             f"{_url_line(space_link)}\n"
             f"{_user_line(rec['uname'], rec['display_name'])}"
         )
@@ -268,9 +288,8 @@ def get_space_info_and_notify(username: str, notify_telegram: bool = True) -> Op
         space_link = f"https://x.com/i/spaces/{space_id}"
 
         tweet = (
-            f"{title}\n"
-            f"{_url_line(short_url, bold=True)}\n"
-            f"{_url_line(short_url, bold=False)}\n"
+            f"{title}"
+            f"{_short_url_block(short_url)}"
             f"{_url_line(space_link)}\n"
             f"{_user_line(uname, user_name)}"
         )
@@ -359,10 +378,11 @@ def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
             else:
                 g["users"].append((r["uname"], r["display_name"]))
 
-        # Build blocks (one per space)
         blocks: List[str] = []
         for sid in sorted(grouped.keys()):
             g = grouped[sid]
+
+            # dedupe users (keep order)
             seen_u = set()
             uniq_users = []
             for u, dn in g["users"]:
