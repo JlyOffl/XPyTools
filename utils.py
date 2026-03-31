@@ -273,6 +273,18 @@ def _post_webhook_and_store_id(webhook_url: str, payload: dict) -> None:
     """
     webhook_url_wait = _ensure_wait_true(webhook_url)
 
+    # Print final payload to console before sending to Discord
+    try:
+        print("--- Discord webhook payload (sending) ---")
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        print("----------------------------------------")
+    except Exception:
+        # fallback: simple print
+        try:
+            print("Discord payload:", payload)
+        except Exception:
+            pass
+
     r = requests.post(webhook_url_wait, json=payload, timeout=10)
 
     if r.status_code == 429:
