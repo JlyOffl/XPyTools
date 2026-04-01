@@ -390,6 +390,7 @@ def _bulk_spaces_worker(usernames, max_workers: int = 100, delay_range=None):
                 )
             )
 
+        logger.info(f"Number of blocks: {len(blocks)}")
         ts = datetime.now().strftime("%Y-%m-%d %I:%M %p")
         header = f"Refresh: {ts}\nSpaces: {len(blocks)} | Users matched: {len(records)}\n"
 
