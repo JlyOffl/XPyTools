@@ -516,34 +516,21 @@ def get_timestamp(format_type='standard'):
 
 
 def extract_value_from_json_path(json_data, search_string):
-
-    # Parse JSON
     data = json.loads(json_data)
+    matches = []
 
-    # Initialize result variable
-    result = None
-
-    # Function to recursively search for the string in the JSON keys
-    def search(obj, search_string):
+    def search(obj):
         if isinstance(obj, dict):
             for key, value in obj.items():
                 if key == search_string:
-                    return value
-                else:
-                    result = search(value, search_string)
-                    if result is not None:
-                        return result
+                    matches.append(value)
+                search(value)
         elif isinstance(obj, list):
             for item in obj:
-                result = search(item, search_string)
-                if result is not None:
-                    return result
-        return None
+                search(item)
 
-    # Call the search function with the JSON data
-    result = search(data, search_string)
-
-    return result
+    search(data)
+    return matches[-1] if matches else None
 
 
 # Define the function to extract header value by key
