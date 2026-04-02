@@ -1,0 +1,19 @@
+curl 'https://x.com/i/api/fleets/v1/avatar_content?user_ids=1974494222481760256&only_spaces=true' \
+  -H 'accept: */*' \
+  -H 'accept-language: en-US,en;q=0.9' \
+  -H 'authorization: Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA' \
+  -b 'gt=2039706622281355724; __cuid=f44486fb07264f738004dcbf7fb53b18; kdt=4GlhHfHLIV1kysIaF8MeW4oyRJPsdkBJoRS7IF0x; lang=en; dnt=1; guest_id=v1%3A177513916303266037; guest_id_marketing=v1%3A177513916303266037; guest_id_ads=v1%3A177513916303266037; personalization_id="v1_0uSQTg71NL80zNPvCjesIA=="; g_state={"i_l":0,"i_ll":1775139224110,"i_b":"vNOzsvb4nHezf5ELnPFFrUochXxsE+GX4J0kv2EImLM","i_e":{"enable_itp_optimization":0}}; auth_token=2faef1361621965c22fe9f23b80969e2fee7b3f0; ct0=ced1bef00164984f93a0d674556f93b4a87c7ebeefaee3f8aa543e465d719e3cd82e54e29b938050dcac7cfe7bc80b353aa6325fab637fa438c30e4d3a042119aedf5f5eb0e8911217c3e52b27b9fbec; twid=u%3D1974494222481760256; att=1-UqwXopnBjig0ztZCXTGP86QbcHa7h8aW6QUiBJ1Q; __cf_bm=YWT74AiqFfvE7xCGJycMkJfba4xNi.YqHpmFnh3CTzU-1775139286.3523257-1.0.1.1-tAE9r5JpPhts8a78gvxQstChK2AHmQS28_a1me.Y9t52cuhKqG8W1cetLv3BW_qsTtwBLRJO5evRD4tV..gI0OmWl50w027kdjKrgdK3NyMY4ztd9ZRtmq_Q3FVnmNur' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://x.com/elonmusk' \
+  -H 'sec-ch-ua: "Chromium";v="146", "Not-A.Brand";v="24", "Microsoft Edge";v="146"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0' \
+  -H 'x-client-transaction-id: RCcGD6Qujb9TeLYKsOBpMK/2MW+ENco3yqhXqtLToAUCiqVJh+bqaSS5S2+UK2dkf5pcO0GQIz8+A+YlBFS+VUmV9SvWRw' \
+  -H 'x-csrf-token: ced1bef00164984f93a0d674556f93b4a87c7ebeefaee3f8aa543e465d719e3cd82e54e29b938050dcac7cfe7bc80b353aa6325fab637fa438c30e4d3a042119aedf5f5eb0e8911217c3e52b27b9fbec' \
+  -H 'x-twitter-active-user: yes' \
+  -H 'x-twitter-auth-type: OAuth2Session' \
+  -H 'x-twitter-client-language: en'
