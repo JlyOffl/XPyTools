@@ -110,6 +110,23 @@ def _fetch_user_space_core(uname: str):
     return rest_id, display_name, space_id, title
 
 
+def _upsert_host_for_space(space_id: str) -> None:
+    """
+    Fetch host info for a space and upsert to Following table.
+    Silently handles exceptions and proceeds.
+    """
+    try:
+        res = get_host_info_by_spaceId(space_id)
+        screen_name = extract_value_from_json_path(res.text, "screen_name")
+        print("Host:", screen_name)
+
+        # Save/upsert the host to the Following table
+        if screen_name:
+            DBProxy().UpsertFollower(screen_name)
+    except Exception:
+        pass
+
+
 def _fetch_audio_core(space_id: str):
     """
     Resolve media_key -> audio_url -> short_url for a given space_id.
@@ -130,6 +147,9 @@ def _fetch_audio_core(space_id: str):
     audio_url = extract_value_from_json_path(res.text, "noRedirectPlaybackUrl")
     if not audio_url:
         return None
+
+    # Upsert host to database (handles exceptions internally)
+    _upsert_host_for_space(space_id)
 
     short_url = shorten_url(audio_url)
     return audio_url, short_url

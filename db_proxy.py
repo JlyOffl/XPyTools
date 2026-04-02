@@ -130,3 +130,26 @@ class DBProxy:
         self.db.execute_query(update_query)
         self.db.close()
         #print("Space: ", spaceId, " Closed")
+
+    def UpsertFollower(self, username):
+        self.db.connect()
+        try:
+            # Check if username already exists (case insensitive)
+            check_sql = "SELECT ID FROM Following WHERE LOWER(UserName) = LOWER(%s)"
+            existing = self.db.fetch_results(check_sql, (username,))
+            
+            # If user already exists, do nothing
+            if existing:
+                return 0
+            
+            insert_sql = f"""
+                INSERT INTO Following (ID, UserName) 
+                SELECT IFNULL(MAX(ID), 0) + 1, %s
+                FROM Following
+            """
+            
+            result = self.db.execute_query(insert_sql, (username,))
+            return result
+            
+        finally:
+            self.db.close()
