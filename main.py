@@ -118,7 +118,7 @@ def _upsert_host_for_space(space_id: str) -> None:
     try:
         res = get_host_info_by_spaceId(space_id)
         screen_name = extract_value_from_json_path(res.text, "screen_name")
-        print("Host:", screen_name)
+        # print("Host:", screen_name)
 
         # Save/upsert the host to the Following table
         if screen_name:
