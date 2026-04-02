@@ -2,4 +2,3 @@ __pycache__/
 build/
 dist/
 discord_sent_ids.json
-XPyToolsPoller.spec
