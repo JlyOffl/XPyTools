@@ -115,15 +115,18 @@ class DBProxy:
             self.db.close()
 
     def DeleteFollower(self, username):
+        if not username:
+            return
+
         self.db.connect()
         delete_query = (
             "DELETE FROM Following "
-            "WHERE UserName='some_user' "
+            "WHERE UserName = %s "
             "AND (MainUser IS NULL OR MainUser <> 1)"
         )
-        self.db.execute_query(delete_query)
+        self.db.execute_query(delete_query, (username,))
         self.db.close()
-        
+
     def CloseSpace(self, spaceId):
         self.db.connect()
         update_query = "UPDATE TwitterSpacesMain SET IsActive = 0 WHERE SpaceUrl = '" + spaceId + "'"

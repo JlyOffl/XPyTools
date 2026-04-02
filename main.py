@@ -2,6 +2,7 @@ import threading
 import logging
 import random
 import time
+import json
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
 
@@ -86,7 +87,15 @@ def _fetch_user_space_core(uname: str):
         DBProxy().DeleteFollower(uname)
         return None
 
-    if not extract_value_from_json_path(res.text, "data"):
+    # Some missing users return {"data":{}} (or equivalent empty payload).
+    # Treat as non-existent user and delete from following list.
+    try:
+        user_data = json.loads(res.text)
+    except json.JSONDecodeError:
+        DBProxy().DeleteFollower(uname)
+        return None
+
+    if not user_data or user_data.get("data") in (None, {}) or user_data.get("errors"):
         DBProxy().DeleteFollower(uname)
         return None
 
