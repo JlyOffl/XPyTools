@@ -1,20 +1,19 @@
-curl 'https://x.com/i/api/fleets/v1/fleetline?only_spaces=true' \
+curl 'https://x.com/i/api/fleets/v1/avatar_content?user_ids=1602107973865771008&only_spaces=true' \
   -H 'accept: */*' \
   -H 'accept-language: en,en-US;q=0.9' \
   -H 'authorization: Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA' \
-  -b 'personalization_id="v1_4fexU33dOSaUXLGU5l+mNg=="; __cuid=57a25709792f4450890b63b2ec8163bf; kdt=WP7gjaIrl41Wfmw3kSINuZyc4U0jmwQemjd76Ug1; lang=en; __cf_bm=UgSXAlPG1CWB8je9_fbgeGCviAwXJZ.djcY5VjI2oC8-1775142459.458136-1.0.1.1-9i9wE82GJhzmTwlktLaNVvJN0z7etOXB_ufuHopPAc1SKzMM6SSvJ0EsGb.fCP1bsy_228HCrbt_uwF7F_3F2i80NFhbe.UMVvIa1DOVFbPp44gfCzPR6jbw_wZn8nHF; g_state={"i_l":0,"i_ll":1775142468996,"i_b":"Q8yjzd1RSsVGRcGlXMwUFguVzG8JvkqKhnBhIqd5YVQ","i_e":{"enable_itp_optimization":0}}; dnt=1; auth_multi="1669019186306097152:d5716ce786cc28d720bbbe331711bb7044a74f2d"; auth_token=64363d03ce1481237e65fc023a2fbb3fabccde12; guest_id_ads=v1%3A177514249893505736; guest_id_marketing=v1%3A177514249893505736; guest_id=v1%3A177514249893505736; twid=u%3D2033270876028669952; ct0=c3c000fbee6c55151a835ee8c7ddcc591ca202013e4b91df41bfd0984faaed4b5d11d15e6a17ddf88128762b03a2d29eccbdec32e00f457a70a377fb3d56455879516fb258d3d446dcd42fe1bbfc3a7c; _twitter_sess=BAh7CCIKZmxhc2hJQzonQWN0aW9uQ29udHJvbGxlcjo6Rmxhc2g6OkZsYXNo%250ASGFzaHsABjoKQHVzZWR7ADofbGFzdF9wYXNzd29yZF9jb25maXJtYXRpb24i%250AFTE3NzUxNDI1MjA5MzcwMDA6HnBhc3N3b3JkX2NvbmZpcm1hdGlvbl91aWQi%250AGDIwMzMyNzA4NzYwMjg2Njk5NTI%253D--a316a83b238c76f5a5a23e1866a13fd5e391681a' \
-  -H 'if-none-match: 345171bda68997018b4de16641ed75c1' \
+  -b '__cuid=57a25709792f4450890b63b2ec8163bf; kdt=WP7gjaIrl41Wfmw3kSINuZyc4U0jmwQemjd76Ug1; dnt=1; personalization_id="v1_edGxQDWwFPnGH4qYYApaLA=="; lang=en; __cf_bm=4LFsh.JojYBrVwM6PicSVcaFvS7.IsRzybP59cGyadQ-1779669881.0859807-1.0.1.1-SKZKNLPw.NxBgsL6PrLe9rTDL92ua.pYhdFFm0mJdIfQo.YbrwxuBR_xYa.MHD7epsuUDMH4H_Wnx2YaKMngZlbg4MKuRYzXdySBw8KfXxNPjEShvUCcnd1y2YNc.pev; __cuid=57a25709792f4450890b63b2ec8163bf; ads_prefs="HBESAAA="; guest_id_ads=v1%3A177966989298114078; guest_id_marketing=v1%3A177966989298114078; guest_id=v1%3A177966989298114078; g_state={"i_l":0,"i_ll":1779670704689,"i_b":"YdbBfHGHgoB56Xbck8fb5TbhGd4pyU5jmj6ebOeNvfk","i_e":{"enable_itp_optimization":22},"i_et":1777640953793}; twid=u%3D1602107973865771008; auth_multi="1618303692456747011:11d75329f7a38293ac2f789d5f8b56e800e3517f|1669019186306097152:f010d3f2d24b556ceebbc3f9e421fb284ad701d2"; auth_token=c9ee0b8b741176e6b035b6b6de603dd20b8ea88f; ct0=73f170f96946e99fb8f8064bdc58b7b2af752d42dbe119530ff19ce91ba73aca932fb74838090d9c8c15d8a0dd52ad1f3912574fcea8f628b9ab1deac18e602a7ceb11ab7d9c444685fa9b2206623aa4' \
   -H 'priority: u=1, i' \
-  -H 'referer: https://x.com/elonmusk' \
-  -H 'sec-ch-ua: "Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"' \
+  -H 'referer: https://x.com/Rajkumar__Offl' \
+  -H 'sec-ch-ua: "Chromium";v="148", "Google Chrome";v="148", "Not/A)Brand";v="99"' \
   -H 'sec-ch-ua-mobile: ?0' \
   -H 'sec-ch-ua-platform: "Windows"' \
   -H 'sec-fetch-dest: empty' \
   -H 'sec-fetch-mode: cors' \
   -H 'sec-fetch-site: same-origin' \
-  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' \
-  -H 'x-client-transaction-id: faZYQ5FeUbqOz4jOTyhQyBEtY6XVweHBCoMnJxV1IdAntZhN1Ob0QhUmMjlIs1WFHzteAnj9V95ILs85FZlbl/ATLG80fg' \
-  -H 'x-csrf-token: c3c000fbee6c55151a835ee8c7ddcc591ca202013e4b91df41bfd0984faaed4b5d11d15e6a17ddf88128762b03a2d29eccbdec32e00f457a70a377fb3d56455879516fb258d3d446dcd42fe1bbfc3a7c' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36' \
+  -H 'x-client-transaction-id: rGvl/+FfjwkISP2aR5153Dz20OvDaJGuZ8ZPnfrg/FFNyY4zJTS6KyoWETIQbGf+CfaXaKl7nr4LA3R/CsVqYgh5tskxrw' \
+  -H 'x-csrf-token: 73f170f96946e99fb8f8064bdc58b7b2af752d42dbe119530ff19ce91ba73aca932fb74838090d9c8c15d8a0dd52ad1f3912574fcea8f628b9ab1deac18e602a7ceb11ab7d9c444685fa9b2206623aa4' \
   -H 'x-twitter-active-user: yes' \
   -H 'x-twitter-auth-type: OAuth2Session' \
   -H 'x-twitter-client-language: en'
