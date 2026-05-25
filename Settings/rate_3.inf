@@ -1,19 +1,19 @@
-curl 'https://x.com/i/api/fleets/v1/avatar_content?user_ids=1770603562751451136&only_spaces=true' \
+curl 'https://x.com/i/api/fleets/v1/avatar_content?user_ids=2033270876028669952&only_spaces=true' \
   -H 'accept: */*' \
   -H 'accept-language: en-US,en;q=0.9' \
   -H 'authorization: Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA' \
-  -b 'gt=2039706622281355724; __cuid=f44486fb07264f738004dcbf7fb53b18; kdt=4GlhHfHLIV1kysIaF8MeW4oyRJPsdkBJoRS7IF0x; lang=en; dnt=1; personalization_id="v1_0uSQTg71NL80zNPvCjesIA=="; __cf_bm=aOEfqm6NfgSlYTt8OGqL7Io0ATDCKHXH.cNjIhUyaLs-1775140807.0372634-1.0.1.1-TBLRrLnGnMKiAe.luNuHGx5VfMzCbFbog3snAKRoyheCVqvSONQtDBlLAsDaFftBP.Qg4fJXnIDruucYXtl77Q68VidxEJw6P62XFx_BNOhQlGA8oh_MRLXf0lScPa.u; g_state={"i_l":0,"i_ll":1775141103831,"i_b":"vNOzsvb4nHezf5ELnPFFrUochXxsE+GX4J0kv2EImLM","i_e":{"enable_itp_optimization":0}}; auth_multi="1710295806584958976:ed8a8d903fbc6bbec3f43917445ce373b8eb718c|1974494222481760256:2faef1361621965c22fe9f23b80969e2fee7b3f0"; auth_token=a81877d2c52f15bfcfd9a67e7f3138e41690629e; guest_id_ads=v1%3A177514113109380269; guest_id_marketing=v1%3A177514113109380269; guest_id=v1%3A177514113109380269; twid=u%3D1770603562751451136; ct0=8278d149250bad536ecfb63abb0f6a2f1d6fe8699f3883716c95d88eae8be3924d1a1bb70dddc16b6a4a5aa5d02293c02ff81d7204c16aa09e9a8c4a6b762e7b8ee80fee23fb087972a773366c37a109' \
+  -b '__cuid=f44486fb07264f738004dcbf7fb53b18; kdt=4GlhHfHLIV1kysIaF8MeW4oyRJPsdkBJoRS7IF0x; dnt=1; guest_id_ads=v1%3A177514230036056948; guest_id_marketing=v1%3A177514230036056948; guest_id=v1%3A177514230036056948; __cf_bm=hxUGLYkqyGzS68jP4.FNbY0f1B9VArBekDmKuAz77Q4-1779670224.6390872-1.0.1.1-Dt2H567pbN7riS.aQUsqiHCt256Ddrf75zqY77Tx6b0fIAJw8u1eD9ObQFgsVknS6iUafW9_WZWzAVvT6Hl4.vWL7wahdEdsaSqbnmh2SSNURXdnoxh_3xyVlhN0efae; personalization_id="v1_ERAY8vDNCIs7DGHMhSGaOw=="; gt=2058712252467835118; __cuid=f44486fb07264f738004dcbf7fb53b18; lang=en; g_state={"i_l":0,"i_ll":1779670475552,"i_b":"ZBpzx4zhN8tPq3EsrmWkyNnoWIaCO6+iIg0sqP+42U8","i_e":{"enable_itp_optimization":0},"i_et":1779670227158}; twid=u%3D2033270876028669952; auth_multi="1770603562751451136:196f06fe97d5b2636f473cb2fc3e63428b214f03|1974494222481760256:871dc77c5917114785f79830359bd641e0d18264"; auth_token=97617c4ebd9e7e820d3407a16734c6ba6d6f935e; ct0=8ba26442374d93cfc5abdd034e67fd895f3ff1710a66d9605761c6aa29a990981fea3f3599ee9578cbed8f5b8b4a327b82ea06c73f4629d2fa68898ffa2f2e355470ea8c49f7fb1e8f51559ef75e3471' \
   -H 'priority: u=1, i' \
-  -H 'referer: https://x.com/elonmusk' \
-  -H 'sec-ch-ua: "Chromium";v="146", "Not-A.Brand";v="24", "Microsoft Edge";v="146"' \
+  -H 'referer: https://x.com/rsbmediatamil' \
+  -H 'sec-ch-ua: "Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"' \
   -H 'sec-ch-ua-mobile: ?0' \
   -H 'sec-ch-ua-platform: "Windows"' \
   -H 'sec-fetch-dest: empty' \
   -H 'sec-fetch-mode: cors' \
   -H 'sec-fetch-site: same-origin' \
-  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0' \
-  -H 'x-client-transaction-id: BsMaW8B4VcL411tuWgLPPcWFEkJ68Amr2AIePnTBYJD8qUsXYjDZOvScWWmkNsVAQKMbeQPB/AvjLh+llI9moweE0l1BBQ' \
-  -H 'x-csrf-token: 8278d149250bad536ecfb63abb0f6a2f1d6fe8699f3883716c95d88eae8be3924d1a1bb70dddc16b6a4a5aa5d02293c02ff81d7204c16aa09e9a8c4a6b762e7b8ee80fee23fb087972a773366c37a109' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0' \
+  -H 'x-client-transaction-id: tGjXwW+Yvz4kV/YwN9hs7GRjWu6JFjam5brCwiaq1weq/IJKnSxPkGvG5oJNmUp4yM+OcLGV1GUhODlAfzMo+te/l6Y6tw' \
+  -H 'x-csrf-token: 8ba26442374d93cfc5abdd034e67fd895f3ff1710a66d9605761c6aa29a990981fea3f3599ee9578cbed8f5b8b4a327b82ea06c73f4629d2fa68898ffa2f2e355470ea8c49f7fb1e8f51559ef75e3471' \
   -H 'x-twitter-active-user: yes' \
   -H 'x-twitter-auth-type: OAuth2Session' \
   -H 'x-twitter-client-language: en'
