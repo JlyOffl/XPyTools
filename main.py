@@ -100,7 +100,8 @@ def _fetch_user_space_core(uname: str):
         return None
 
     rest_id = extract_value_from_json_path(res.text, "rest_id")
-    display_name = extract_value_from_json_path(res.text, "name") or uname
+    # display_name = extract_value_from_json_path(res.text, "name") or uname
+    display_name = extract_value(res.text,"data.user.result.legacy.name") or extract_value(res.text,"data.user.result.core.name") or uname
     if not rest_id:
         return None
 

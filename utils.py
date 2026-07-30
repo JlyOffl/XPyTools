@@ -532,6 +532,19 @@ def extract_value_from_json_path(json_data, search_string):
     search(data)
     return matches[-1] if matches else None
 
+def extract_value(json_data, path):
+    obj = json.loads(json_data)
+
+    for key in path.split("."):
+        if not isinstance(obj, dict):
+            return None
+
+        obj = obj.get(key)
+
+        if obj is None:
+            return None
+
+    return obj
 
 # Define the function to extract header value by key
 def get_header_value(file_path, key):
