@@ -128,9 +128,7 @@ def record_m3u8(url, spaceid, output_pattern="rec-%03d.mp4", segment_time=1800):
 
 
 def send_telegram_message(message):
-    # message = (message or "").strip()
-    # message = message.replace("https://tinyurl.com/", " @")
-    print(message)
+    
     token = DBProxy().GetSettingValue('TelegramBotToken')
     url = f"https://api.telegram.org/bot{token}/sendMessage"
 
@@ -337,8 +335,9 @@ def send_discord_message(message: str) -> bool:
     Deletes old webhook messages first.
     Stores the new message id in discord_sent_ids.json.
     """
-    # message = (message or "").replace("https://tinyurl.com/", " @")
     message = message.rstrip() + SEPARATOR
+
+    # print("Discord Message:", message)
 
     webhook_url = DBProxy().GetSettingValue('DiscordWebhookURL')
     if not webhook_url:
@@ -372,7 +371,7 @@ def _build_one_discord_message(
     omitted = 0
 
     for b in blocks:
-        b = (b or "").replace("https://tinyurl.com/", " @").strip()
+        b = (b or "").strip()
         if not b:
             continue
 
@@ -438,7 +437,7 @@ def send_discord_message_batch(
     messages: List[str] = []
     current = (header.strip() + "\n") if header else ""
     for b in blocks:
-        b = (b or "").replace("https://tinyurl.com/", " @").strip()
+        b = (b or "").strip()
         if not b:
             continue
         piece = b + SEPARATOR
