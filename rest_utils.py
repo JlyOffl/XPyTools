@@ -1,10 +1,9 @@
-import requests
-import random
 import os
-import json
-import datetime
+import random
+
+import requests
+
 from utils import *
-from rest_core import *
 
 def execute_api(url, method, payload):
     import os, re, random, requests

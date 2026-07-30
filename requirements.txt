@@ -1,21 +1,5 @@
-# Web framework
 fastapi==0.115.2
 uvicorn[standard]==0.30.3
-gunicorn==23.0.0
-
-# HTTP and concurrency utilities
-httpx[http2]==0.27.2
-anyio==4.4.0
-
-# Database
 mysql-connector-python==9.0.0
-cryptography==43.0.1    # recommended for SSL parsing
-
-# Misc utilities
-colorama==0.4.6
 requests==2.32.3
-python-multipart==0.0.9
-
-# Telegram bot + Telethon (NEW)
-python-telegram-bot==21.6
-telethon==1.36.0
+cryptography==43.0.1
