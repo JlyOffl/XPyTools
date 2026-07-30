@@ -21,15 +21,32 @@ parse_qsl = _up.parse_qsl
 urlencode = _up.urlencode
 
 
+import requests
+
+
+import requests
+
 def shorten_url(long_url):
-    #api_url = f"https://is.gd/create.php?format=simple&url={long_url}"
-    #api_url = f"https://tinyurl.com/api-create.php?url={long_url}"
-    api_url = f"https://jly.netlify.app/short?url={long_url}"
-    response = requests.get(api_url)
-    if response.status_code == 200:
-        return response.text
-    else:
-        return None
+    shorteners = [
+        ("https://jly.netlify.app/short", {"url": long_url}),
+        ("https://tinyurl.com/api-create.php", {"url": long_url}),
+        ("https://clck.ru/--", {"url": long_url}),
+        # ("https://is.gd/create.php", {"format": "simple", "url": long_url}),
+        # ("https://v.gd/create.php", {"format": "simple", "url": long_url}),
+    ]
+
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    for url, params in shorteners:
+        try:
+            r = requests.get(url, params=params, headers=headers, timeout=10)
+            s = r.text.strip()
+            if r.status_code == 200 and s.startswith(("http://", "https://")) and "error" not in s.lower():
+                return s
+        except requests.RequestException:
+            pass
+
+    return None
 
 
 def check_process(*strings):
