@@ -175,10 +175,10 @@ def _format_grouped_space_message(
     if space_line:
         lines.append(space_line)
 
-    for uname, display_name in users:
-        ul = _user_line(uname, display_name)
-        if ul:
-            lines.append(ul)
+    # for uname, display_name in users:
+    #     ul = _user_line(uname, display_name)
+    #     if ul:
+    #         lines.append(ul)
 
     return "\n".join(lines)
 
