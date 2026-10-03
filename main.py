@@ -351,6 +351,6 @@ def fetch_space(background_tasks: BackgroundTasks):
 
     return {"status": "Triggered", "count": len(ulist), "jitter_seconds": round(delay, 2)}
 
-@app.get("/is")
-def is():
+@app.get("/is", response_class=PlainTextResponse)
+def is_status():
     return "Y"
