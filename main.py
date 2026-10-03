@@ -350,3 +350,7 @@ def fetch_space(background_tasks: BackgroundTasks):
     background_tasks.add_task(lambda: (time.sleep(delay), _bulk_spaces_worker(ulist)))
 
     return {"status": "Triggered", "count": len(ulist), "jitter_seconds": round(delay, 2)}
+
+@app.get("/is")
+def is():
+    return "Y"
